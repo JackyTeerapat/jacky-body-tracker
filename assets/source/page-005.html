@@ -1,0 +1,742 @@
+>
+          <div id="m-indicators" class="m-indicator-grid"></div>
+          <details class="m-details">
+            <summary>ดูค่า impedance เพิ่มเติม</summary>
+            <div id="m-impedance"></div>
+          </details>
+        </section>
+
+        <section class="m-section" aria-labelledby="m-history-heading">
+          <div class="m-section-head">
+            <div>
+              <p class="m-eyebrow">บันทึกย้อนหลัง</p>
+              <h2 id="m-history-heading">ดูการเปลี่ยนแปลง</h2>
+            </div>
+          </div>
+          <div id="m-history" class="m-history"></div>
+        </section>
+
+        <p class="m-footnote">
+          <span id="m-scan-date">อัปเดตจากผลสแกนล่าสุด</span>
+          <span class="m-disclaimer">ใช้ติดตามแนวโน้ม ไม่ใช่การวินิจฉัย</span>
+        </p>
+      </div>
+    </div>
+  </div>
+</main>
+<script>
+(function () {
+  const mobileStore = window.__JACKY_TRACKER__;
+  if (!mobileStore || !mobileStore.DATA || !mobileStore.DATA.length) return;
+
+  const mobileData = mobileStore.DATA;
+  const mobileLatest = mobileData[mobileData.length - 1];
+  const mobilePrior = mobileData[mobileData.length - 2];
+  const mobileStart = mobileData[0];
+  const mobileTarget = mobileStore.TARGET;
+  const mobileMuscleTarget = mobileStore.MUSCLE_TARGET;
+
+  const mobileSet = (id, value) => {
+    const element = document.getElementById(id);
+    if (element) element.textContent = value;
+  };
+  const mobileScanParts = (item) => {
+    const match = String(item && item.measuredAt || '').match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+    if (!match) return {date: item && item.date || '—', time: item && item.time || '—'};
+    const months = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+    return {date: Number(match[3]) + ' ' + months[Number(match[2]) - 1] + ' ' + match[1], time: match[4] + ':' + match[5]};
+  };
+  const mobileNum = (value, digits) => Number(value).toFixed(digits == null ? 1 : digits);
+  const mobileSigned = (value, unit) => {
+    if (!Number.isFinite(Number(value))) return '—';
+    const number = Number(value);
+    const sign = number > 0 ? '+' : '';
+    return (number < 0 ? '−' + Math.abs(number).toFixed(1) : sign + number.toFixed(1)) + unit;
+  };
+  const mobileDelta = (current, previous, unit) => mobileSigned(Number(current) - Number(previous), unit);
+  const mobileRow = (label, value, note) =>
+    '<div class="m-data-row"><span>' + label + '</span><strong>' + value + (note ? ' <em>' + note + '</em>' : '') + '</strong></div>';
+
+  const mobileProgress = Math.min(100, Math.max(0,
+    ((mobileStart.fat - mobileLatest.fat) / (mobileStart.fat - mobileTarget)) * 100
+  ));
+  const mobileWeightLeft = mobileLatest.weight - mobileLatest.targetWeight;
+  const mobileLatestScan = mobileScanParts(mobileLatest);
+  document.getElementById('m-hero').style.setProperty('--progress', mobileProgress.toFixed(0) + '%');
+  mobileSet('m-scan-date', 'อัปเดตจากผลสแกนวันที่ ' + mobileLatestScan.date + ' เวลา ' + mobileLatestScan.time);
+  mobileSet('m-score-value', mobileLatest.score);
+  mobileSet('m-weight-value', mobileNum(mobileLatest.weight));
+  mobileSet('m-target-weight', mobileNum(mobileLatest.targetWeight) + ' kg');
+  mobileSet('m-weight-left', 'เหลือ ' + mobileNum(mobileWeightLeft) + ' kg');
+  mobileSet('m-fat-summary', 'Fat mass ' + mobileNum(mobileLatest.fat) + ' kg');
+  mobileSet('m-fat-delta', mobileDelta(mobileLatest.fat, mobilePrior.fat, ' kg') + ' vs ครั้งก่อน');
+  mobileSet('m-fat-value', mobileNum(mobileLatest.fat));
+  mobileSet('m-bf-value', mobileNum(mobileLatest.bf));
+  mobileSet('m-muscle-value', mobileNum(mobileLatest.muscle));
+  mobileSet('m-fat-metric-delta', mobileDelta(mobileLatest.fat, mobilePrior.fat, ' kg') + ' จากครั้งก่อน');
+  mobileSet('m-bf-delta', mobileDelta(mobileLatest.bf, mobilePrior.bf, '%') + ' จากครั้งก่อน');
+  mobileSet('m-muscle-delta', mobileDelta(mobileLatest.muscle, mobilePrior.muscle, ' kg') + ' จากครั้งก่อน · รักษาระดับ');
+
+  document.getElementById('m-report-grid').innerHTML =
+    '<article class="m-report-card"><h3>องค์ประกอบหลัก</h3>' +
+      mobileRow('น้ำหนัก', mobileNum(mobileLatest.weight) + ' kg', 'High') +
+      mobileRow('Fat mass', mobileNum(mobileLatest.fat) + ' kg', '22.8%') +
+      mobileRow('Muscle mass', mobileNum(mobileLatest.muscle) + ' kg', 'Excellent') +
+      mobileRow('Skeletal muscle', mobileNum(mobileLatest.skeletalMuscle) + ' kg', '44.0%') +
+      mobileRow('น้ำในร่างกาย', mobileNum(mobileLatest.waterWeight) + ' kg', '56.6%') +
+      mobileRow('Protein mass', mobileNum(mobileLatest.proteinMass) + ' kg', '15.5%') +
+      mobileRow('Bone mass', mobileNum(mobileLatest.boneMass) + ' kg', '5.2%') +
+    '</article>' +
+    '<article class="m-report-card"><h3>การควบคุมน้ำหนัก</h3>' +
+      mobileRow('เป้าหมายน้ำหนัก', mobileNum(mobileLatest.targetWeight) + ' kg') +
+      mobileRow('Weight control', mobileSigned(mobileLatest.weightControl, ' kg')) +
+      mobileRow('Fat control', mobileSigned(mobileLatest.fatControl, ' kg')) +
+      mobileRow('Muscle control', mobileSigned(mobileLatest.muscleControl, ' kg')) +
+    '</article>';
+
+  const indicatorItems = [
+    ['BMI', mobileNum(mobileLatest.bmi, 1)],
+    ['Visceral fat', mobileLatest.vis],
+    ['BMR', mobileLatest.bmr.toLocaleString('en-US') + ' kcal'],
+    ['Fat-free mass', mobileNum(mobileLatest.fatFreeMass) + ' kg'],
+    ['Subcutaneous fat', mobileNum(mobileLatest.subcutaneousFat) + '%'],
+    ['ASMI', mobileNum(mobileLatest.asmi) + ' kg/m²'],
+    ['Body age', mobileLatest.bodyAge + ' ปี'],
+    ['WHR', mobileNum(mobileLatest.whr, 2)]
+  ];
+  document.getElementById('m-indicators').innerHTML = indicatorItems.map(item =>
+    '<div class="m-indicator"><span>' + item[0] + '</span><strong>' + item[1] + '</strong></div>'
+  ).join('');
+
+  const mobileParts = [
+    {key: 'la', label: 'แขนซ้าย'},
+    {key: 'ra', label: 'แขนขวา'},
+    {key: 'tr', label: 'แกนกลาง'},
+    {key: 'll', label: 'ขาซ้าย'},
+    {key: 'rl', label: 'ขาขวา'}
+  ];
+  document.getElementById('m-segment-grid').innerHTML = mobileParts.map(part => {
+    const fatStatus = mobileLatest.sfPct[part.key] > 160 ? 'สูง' : 'มาตรฐาน';
+    const muscleStatus = mobileLatest.smPct[part.key] > 110 ? 'สูง' : 'มาตรฐาน';
+    return '<article class="m-segment">' +
+      '<div class="m-segment-top"><strong>' + part.label + '</strong><span>Fat ' + fatStatus + '</span></div>' +
+      '<div class="m-segment-lines">' +
+        '<div class="m-segment-line"><small>FAT MASS</small><b>' + mobileNum(mobileLatest.sf[part.key]) + ' <span>kg</span></b><em>' + mobileNum(mobileLatest.sfPct[part.key]) + '% · ' + fatStatus + '</em></div>' +
+        '<div class="m-segment-line muscle"><small>MUSCLE</small><b>' + mobileNum(mobileLatest.sm[part.key]) + ' <span>kg</span></b><em>' + mobileNum(mobileLatest.smPct[part.key]) + '% · ' + muscleStatus + '</em></div>' +
+      '</div>' +
+    '</article>';
+  }).join('');
+
+  const impedanceRows = [
+    ['20 kHz · แขนขวา', mobileNum(mobileLatest.impedance[20].ra, 1)],
+    ['20 kHz · แขนซ้าย', mobileNum(mobileLatest.impedance[20].la, 1)],
+    ['20 kHz · แกนกลาง', mobileNum(mobileLatest.impedance[20].tr, 1)],
+    ['20 kHz · ขาขวา', mobileNum(mobileLatest.impedance[20].rl, 1)],
+    ['20 kHz · ขาซ้าย', mobileNum(mobileLatest.impedance[20].ll, 1)],
+    ['100 kHz · แขนขวา', mobileNum(mobileLatest.impedance[100].ra, 1)],
+    ['100 kHz · แขนซ้าย', mobileNum(mobileLatest.impedance[100].la, 1)],
+    ['100 kHz · แกนกลาง', mobileNum(mobileLatest.impedance[100].tr, 1)],
+    ['100 kHz · ขาขวา', mobileNum(mobileLatest.impedance[100].rl, 1)],
+    ['100 kHz · ขาซ้าย', mobileNum(mobileLatest.impedance[100].ll, 1)]
+  ];
+  document.getElementById('m-impedance').innerHTML =
+    '<article class="m-report-card" style="margin-top:10px"><h3>Bioelectrical impedance · Ω</h3>' +
+      impedanceRows.map(item => mobileRow(item[0], item[1])).join('') +
+    '</article>';
+
+  const mobileHistory = mobileData.slice(-8).reverse();
+  document.getElementById('m-history').innerHTML =
+    '<div class="m-history-row header"><span>วันที่</span><span>Fat</span><span>BF%</span><span>Muscle</span></div>' +
+    mobileHistory.map(item =>
+      '<div class="m-history-row">' +
+        '<strong>' + item.date + '</strong>' +
+        '<span>' + mobileNum(item.fat) + ' kg</span>' +
+        '<span>' + mobileNum(item.bf) + '%</span>' +
+        '<span>' + mobileNum(item.muscle) + ' kg</span>' +
+      '</div>'
+    ).join('');
+
+  const mobileTrend = mobileData.slice(-24);
+  if (window.Chart) {
+    const chartOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: { padding: 10, displayColors: false }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { color: '#879596', font: { size: 9 }, maxTicksLimit: 5, maxRotation: 0 }
+        },
+        y: {
+          grid: { color: '#edf1f0' },
+          ticks: { color: '#879596', font: { size: 9 }, maxTicksLimit: 4 }
+        }
+      }
+    };
+    new window.Chart(document.getElementById('m-fat-chart'), {
+      type: 'line',
+      data: {
+        labels: mobileTrend.map(item => item.date),
+        datasets: [
+          {
+            data: mobileTrend.map(item => item.fat),
+            borderColor: '#ef7c67',
+            backgroundColor: 'rgba(239,124,103,.12)',
+            borderWidth: 2.5,
+            pointRadius: 0,
+            pointHoverRadius: 4,
+            tension: .35,
+            fill: true
+          },
+          {
+            data: mobileTrend.map(item => +(mobileStart.fat - (item.daysFromStart / mobileStore.TOTAL_DAYS) * (mobileStart.fat - mobileTarget)).toFixed(2)),
+            borderColor: '#2bb9b3',
+            borderDash: [5, 5],
+            borderWidth: 1.5,
+            pointRadius: 0,
+            tension: 0,
+            fill: false
+          }
+        ]
+      },
+      options: chartOptions
+    });
+    new window.Chart(document.getElementById('m-muscle-chart'), {
+      type: 'line',
+      data: {
+        labels: mobileTrend.map(item => item.date),
+        datasets: [{
+          data: mobileTrend.map(item => item.muscle),
+          borderColor: '#2bb9b3',
+          backgroundColor: 'rgba(43,185,179,.12)',
+          borderWidth: 2.5,
+          pointRadius: 0,
+          pointHoverRadius: 4,
+          tension: .35,
+          fill: true
+        }]
+      },
+      options: chartOptions
+    });
+  }
+})();
+</script>
+<main id="summary-app" class="summary-shell" aria-label="สรุป Body Tracker">
+  <div class="summary-wrap">
+    <header class="s-header">
+      <div class="s-header-copy">
+        <p class="s-eyebrow">JACKY / BODY TRACKER</p>
+        <h1>สรุปวันนี้</h1>
+        <p class="s-date" id="s-scan-date">ผลสแกนล่าสุด</p>
+      </div>
+      <div class="s-score" aria-label="คะแนนร่างกาย">
+        <small>คะแนนร่างกาย</small>
+        <strong id="s-score">77</strong><span>/100</span>
+      </div>
+    </header>
+
+    <section class="s-verdict" aria-labelledby="s-verdict-title">
+      <p class="s-verdict-label">AI Coach Analytics</p>
+      <h2 id="s-verdict-title">กำลังอ่านแนวโน้ม</h2>
+      <p id="s-verdict-note">กำลังสรุปคำแนะนำจากช่วงที่เลือก</p>
+      <p id="s-verdict-action" class="s-verdict-action">กำลังเลือก action ที่เหมาะกับตอนนี้</p>
+      <p id="s-verdict-encourage" class="s-verdict-encourage">ค่อย ๆ ทำต่อ ความสม่ำเสมอชนะการเร่งครับ</p>
+    </section>
+
+    <section class="s-metric-goal-grid" aria-label="ตัวเลขล่าสุดและเป้าหมาย">
+      <article class="s-metric-goal">
+        <div class="s-metric-goal-top"><span>น้ำหนัก</span><em id="s-weight-key">เป้าหมาย 73.7 kg</em></div>
+        <div class="s-metric-goal-values">
+          <div><small>ตอนนี้</small><strong><b id="s-weight">82.2</b> <i>kg</i></strong></div>
+          <div class="s-goal-value"><small>เป้า</small><strong><b id="s-weight-target">73.7</b> <i>kg</i></strong></div>
+        </div>
+        <div class="s-goal-bar" role="progressbar" aria-label="ความคืบหน้าเป้าน้ำหนัก" aria-valuemin="0" aria-valuemax="100"><i id="s-weight-progress"></i></div>
+        <div class="s-metric-goal-foot"><span id="s-weight-progress-label">ไปแล้ว 6%</span><strong id="s-weight-gap">เหลือ 8.5 kg</strong></div>
+        <div class="s-goal-forecast"><strong id="s-weight-forecast">กำลังคำนวณ</strong><span id="s-weight-forecast-rate"></span></div>
+      </article>
+      <article class="s-metric-goal coral">
+        <div class="s-metric-goal-top"><span>ไขมัน</span><em id="s-fat-key">−0.5 kg จากครั้งก่อน</em></div>
+        <div class="s-metric-goal-values">
+          <div><small>ตอนนี้</small><strong><b id="s-fat">18.7</b> <i>kg</i></strong></div>
+          <div class="s-goal-value"><small>เป้า</small><strong><b id="s-fat-target">9.0</b> <i>kg</i></strong></div>
+        </div>
+        <div class="s-goal-bar" role="progressbar" aria-label="ความคืบหน้าเป้าไขมัน" aria-valuemin="0" aria-valuemax="100"><i id="s-fat-progress"></i></div>
+        <div class="s-metric-goal-foot"><span id="s-fat-progress-label">ไปแล้ว 25%</span><strong id="s-fat-gap">ลดอีก 9.7 kg</strong></div>
+        <div class="s-goal-forecast"><strong id="s-fat-forecast">กำลังคำนวณ</strong><span id="s-fat-forecast-rate"></span></div>
+      </article>
+      <article class="s-metric-goal blue">
+        <div class="s-metric-goal-top"><span>กล้ามเนื้อ</span><em id="s-muscle-key">−0.1 kg จากครั้งก่อน</em></div>
+        <div class="s-metric-goal-values">
+          <div><small>ตอนนี้</small><strong><b id="s-muscle">59.2</b> <i>kg</i></strong></div>
+          <div class="s-goal-value"><small>เป้า</small><strong><b id="s-muscle-target">63.0</b> <i>kg</i></strong></div>
+        </div>
+        <div class="s-goal-bar" role="progressbar" aria-label="ความคืบหน้าเป้ากล้ามเนื้อ" aria-valuemin="0" aria-valuemax="100"><i id="s-muscle-progress"></i></div>
+        <div class="s-metric-goal-foot"><span id="s-muscle-progress-label">ไปแล้ว 40%</span><strong id="s-muscle-gap">เพิ่มอีก 3.8 kg</strong></div>
+        <div class="s-goal-forecast"><strong id="s-muscle-forecast">กำลังคำนวณ</strong><span id="s-muscle-forecast-rate"></span></div>
+      </article>
+    </section>
+
+    <section class="s-trend-card" aria-labelledby="s-trend-heading">
+      <div class="s-trend-head">
+        <div>
+          <p class="s-section-kicker">แนวโน้ม</p>
+          <h3 id="s-trend-heading">ดูการเปลี่ยนแปลง</h3>
+        </div>
+        <span id="s-range-label">7 วัน</span>
+      </div>
+      <div class="s-period-selector">
+        <span>เทียบกับ</span>
+        <div class="s-range-controls" role="group" aria-label="เลือกช่วงเวลา">
+          <button type="button" data-range="1" aria-pressed="false">1 วัน</button>
+          <button type="button" data-range="7" aria-pressed="true">7 วัน</button>
+          <button type="button" data-range="30" aria-pressed="false">30 วัน</button>
+          <button type="button" data-range="180" aria-pressed="false" disabled title="ข้อมูลยังไม่ถึง" aria-label="6 เดือน — ข้อมูลยังไม่ถึง">6 เดือน</button>
+          <button type="button" data-range="365" aria-pressed="false" disabled title="ข้อมูลยังไม่ถึง" aria-label="1 ปี — ข้อมูลยังไม่ถึง">1 ปี</button>
+          <button type="button" data-range="start" aria-pressed="false">ตั้งแต่เริ่ม</button>
+        </div>
+      </div>
+      <p id="s-range-note" class="s-range-note">กำลังดูการเปลี่ยนแปลงจากผลวัดเมื่อ 7 วันก่อน</p>
+      <div class="s-chart-grid">
+        <article class="s-mini-chart">
+          <div class="s-chart-head"><h4>ไขมัน</h4><span id="s-fat-chart-value">18.7 kg</span></div>
+          <div class="s-chart"><canvas id="s-fat-chart" aria-label="แนวโน้มไขมัน"></canvas></div>
+        </article>
+        <article class="s-mini-chart blue">
+          <div class="s-chart-head"><h4>กล้ามเนื้อ</h4><span id="s-muscle-chart-value">59.2 kg</span></div>
+          <div class="s-chart"><canvas id="s-muscle-chart" aria-label="แนวโน้มกล้ามเนื้อ"></canvas></div>
+        </article>
+      </div>
+    </section>
+
+    <section class="s-details" aria-labelledby="s-details-heading">
+      <div class="s-details-head">
+        <div>
+          <p class="s-section-kicker">รายละเอียดเพิ่มเติม</p>
+          <h3 id="s-details-heading">ตัวเลขตามช่วงที่เลือก</h3>
+        </div>
+        <span id="s-detail-range-label">7 วัน</span>
+      </div>
+      <p id="s-detail-range-note" class="s-detail-range-note"></p>
+      <div id="s-detail-content"></div>
+    </section>
+
+    <details class="s-history">
+      <summary><span>ประวัติการวัดทั้งหมด</span><strong id="s-log-count">0 ครั้ง</strong></summary>
+      <p class="s-history-note">แสดงล่าสุดก่อน · 10 รายการต่อหน้า · เลื่อนตารางซ้าย-ขวาเพื่อดูค่าทั้งหมด · — = ยังไม่มีข้อมูลจากรูป/ผลสแกนครั้งนั้น</p>
+      <div class="s-table-wrap">
+        <table class="s-log-table">
+          <thead><tr id="s-log-head"><th scope="col">วันที่</th><th scope="col">น้ำหนัก</th><th scope="col">ไขมัน</th><th scope="col">ไขมัน %</th><th scope="col">กล้ามเนื้อ</th><th scope="col">คะแนน</th></tr></thead>
+          <tbody id="s-log-content"></tbody>
+        </table>
+      </div>
+      <section id="s-log-detail" class="s-log-detail" hidden aria-live="polite"></section>
+      <div class="s-log-pagination" aria-label="เปลี่ยนหน้าประวัติการวัด">
+        <button type="button" id="s-log-prev">ก่อนหน้า</button>
+        <span id="s-log-page">1 / 1</span>
+        <button type="button" id="s-log-next">ถัดไป</button>
+      </div>
+    </details>
+
+    <p class="s-footer">
+      <span id="s-footer-scan-date">อัปเดตจากผลสแกนล่าสุด</span><br>
+      ตัวเลขจากเครื่อง BIA ใช้ดูแนวโน้มร่วมกับการวัดครั้งต่อ ๆ ไป ไม่ใช่การวินิจฉัย
+    </p>
+  </div>
+</main>
+<script>
+(function () {
+  const summaryStore = window.__JACKY_TRACKER__;
+  if (!summaryStore || !summaryStore.DATA || !summaryStore.DATA.length) return;
+
+  const summaryData = summaryStore.DATA;
+  const summaryLatest = summaryData[summaryData.length - 1];
+  const summaryPrior = summaryData[summaryData.length - 2];
+  const summaryStart = summaryData[0];
+  const summaryFatDelta = summaryLatest.fat - summaryPrior.fat;
+  const summaryBfDelta = summaryLatest.bf - summaryPrior.bf;
+  const summaryMuscleDelta = summaryLatest.muscle - summaryPrior.muscle;
+  const summaryProgress = Math.min(100, Math.max(0,
+    ((summaryStart.fat - summaryLatest.fat) / (summaryStart.fat - summaryStore.TARGET)) * 100
+  ));
+
+  const summarySet = (id, value) => {
+    const element = document.getElementById(id);
+    if (element) element.textContent = value;
+  };
+  const summaryNum = (value, digits) => Number(value).toFixed(digits == null ? 1 : digits);
+  const summaryChange = (value, unit) => {
+    const number = Number(value);
+    if (!Number.isFinite(number) || number === 0) return 'คงที่';
+    return number < 0
+      ? 'ลดลง ' + Math.abs(number).toFixed(1) + unit
+      : 'เพิ่มขึ้น ' + number.toFixed(1) + unit;
+  };
+  const summaryDetailRow = (label, value) =>
+    '<div class="s-detail-row"><span>' + label + '</span><strong>' + value + '</strong></div>';
+
+  const summaryMuscleStable = Math.abs(summaryMuscleDelta) <= 0.2;
+  const summaryVerdict = summaryFatDelta < 0 && summaryMuscleStable
+    ? 'ไขมันลดลง กล้ามเนื้อคงที่'
+    : summaryFatDelta < 0
+      ? 'ไขมันลดลง แต่กล้ามเนื้อต้องติดตาม'
+      : 'ดูแนวโน้มต่ออีกเล็กน้อย';
+  document.getElementById('summary-app').style.setProperty('--goal-progress', summaryProgress.toFixed(0) + '%');
+  summarySet('s-score', summaryLatest.score);
+  summarySet('s-verdict-title', summaryVerdict);
+  summarySet('s-verdict-note', 'กำลังสรุป AI Coach Analytics');
+  summarySet('s-verdict-action', 'กำลังเลือก action ที่เหมาะกับตอนนี้');
+  summarySet('s-verdict-encourage', 'ค่อย ๆ ทำต่อ ความสม่ำเสมอชนะการเร่งครับ');
+  summarySet('s-progress-label', 'ทำไปแล้ว ' + summaryProgress.toFixed(0) + '%');
+  summarySet('s-weight', summaryNum(summaryLatest.weight));
+  summarySet('s-fat', summaryNum(summaryLatest.fat));
+  summarySet('s-muscle', summaryNum(summaryLatest.muscle));
+  summarySet('s-goal-value', 'เหลือ ' + summaryNum(summaryLatest.weight - summaryLatest.targetWeight) + ' kg');
+  summarySet('s-fat-key', summaryChange(summaryFatDelta, ' kg'));
+  summarySet('s-muscle-key', summaryChange(summaryMuscleDelta, ' kg'));
+  summarySet('s-fat-change', summaryChange(summaryFatDelta, ' kg'));
+  summarySet('s-bf-change', summaryChange(summaryBfDelta, '%'));
+  summarySet('s-muscle-change', summaryChange(summaryMuscleDelta, ' kg'));
+
+  const summaryParts = [
+    {key: 'la', label: 'แขนซ้าย'},
+    {key: 'ra', label: 'แขนขวา'},
+    {key: 'tr', label: 'ลำตัว'},
+    {key: 'll', label: 'ขาซ้าย'},
+    {key: 'rl', label: 'ขาขวา'}
+  ];
+  document.getElementById('s-detail-content').innerHTML =
+    '<article class="s-detail-card"><h3>ตัวเลขจากการสแกน</h3>' +
+      summaryDetailRow('Body fat', summaryNum(summaryLatest.bf) + '%') +
+      summaryDetailRow('กล้ามเนื้อโครงร่าง', summaryNum(summaryLatest.skeletalMuscle) + ' kg') +
+      summaryDetailRow('น้ำในร่างกาย', summaryNum(summaryLatest.waterWeight) + ' kg') +
+      summaryDetailRow('BMI', summaryNum(summaryLatest.bmi, 1)) +
+      summaryDetailRow('ไขมันช่องท้อง', summaryLatest.vis) +
+      summaryDetailRow('BMR', summaryLatest.bmr.toLocaleString('en-US') + ' kcal') +
+      summaryDetailRow('อายุร่างกาย', summaryLatest.bodyAge + ' ปี') +
+    '</article>' +
+    '<article class="s-detail-card"><h3>รายส่วนของร่างกาย</h3><div class="s-segment-list">' +
+      summaryParts.map(part =>
+        '<div class="s-segment-item"><span>' + part.label + '</span><strong>ไขมัน ' + summaryNum(summaryLatest.sf[part.key]) + ' kg</strong><small>กล้ามเนื้อ ' + summaryNum(summaryLatest.sm[part.key]) + ' kg</small></div>'
+      ).join('') +
+    '</div></article>';
+
+})();
+</script>
+<script>
+(function () {
+  const summaryStore = window.__JACKY_TRACKER__;
+  if (!summaryStore || !summaryStore.DATA || !summaryStore.DATA.length) return;
+
+  const summaryData = summaryStore.DATA;
+  const summaryLatest = summaryData[summaryData.length - 1];
+  const summaryPrior = summaryData[summaryData.length - 2];
+  const summaryStart = summaryData[0];
+  const summaryTargetWeight = Number(summaryLatest.targetWeight || 73.7);
+  const summaryTargetFat = Number(summaryStore.TARGET || 9.0);
+  const summaryTargetMuscle = Number(summaryStore.MUSCLE_TARGET || 63.0);
+  const summaryRangeLabels = {1: '1 วัน', 7: '7 วัน', 30: '30 วัน', 180: '6 เดือน', 365: '1 ปี', start: 'ตั้งแต่เริ่ม'};
+  const summaryPeriodConfig = {
+    1: {label: '1 วัน', days: 1},
+    7: {label: '7 วัน', days: 7},
+    30: {label: '30 วัน', days: 30},
+    180: {label: '6 เดือน', days: 180},
+    365: {label: '1 ปี', days: 365},
+    start: {label: 'ตั้งแต่เริ่ม', days: null}
+  };
+
+  const summarySet = (id, value) => {
+    const element = document.getElementById(id);
+    if (element) element.textContent = value;
+  };
+  const summaryScanParts = (item) => {
+    const match = String(item && item.measuredAt || '').match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+    if (!match) return {date: item && item.date || '—', time: item && item.time || '—'};
+    const months = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+    return {date: Number(match[3]) + ' ' + months[Number(match[2]) - 1] + ' ' + match[1], time: match[4] + ':' + match[5]};
+  };
+  const summaryNum = (value, digits) => {
+    const number = Number(value);
+    return Number.isFinite(number) ? number.toFixed(digits == null ? 1 : digits) : '—';
+  };
+  const summarySigned = (value, unit) => {
+    if (value == null || value === '') return '—';
+    const number = Number(value);
+    if (!Number.isFinite(number)) return '—';
+    const sign = number > 0 ? '+' : number < 0 ? '−' : '';
+    return sign + Math.abs(number).toFixed(1) + unit;
+  };
+  const summaryGap = (current, target) => {
+    const number = Number(target) - Number(current);
+    if (!Number.isFinite(number) || Math.abs(number) < 0.05) return 'ถึงเป้า';
+    return number > 0
+      ? 'เพิ่มอีก ' + Math.abs(number).toFixed(1) + ' kg'
+      : 'ลดอีก ' + Math.abs(number).toFixed(1) + ' kg';
+  };
+  const summaryLogValue = (value, unit, digits) => {
+    const number = Number(value);
+    return Number.isFinite(number) ? number.toFixed(digits == null ? 1 : digits) + unit : '—';
+  };
+  const summaryLogSegmentValue = (item, group, key) => summaryLogValue(item && item[group] && item[group][key], ' kg');
+  const summaryLogSegmentPercentValue = (item, group, key) => summaryLogValue(item && item[group] && item[group][key], '%');
+  const summaryLogImpedanceValue = (item, frequency, key) => summaryLogValue(item && item.impedance && item.impedance[frequency] && item.impedance[frequency][key], ' Ω');
+  const summaryLogEscape = value => String(value == null ? '' : value)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  const summaryLogDetailText = value => value == null || value === '' ? '—' : summaryLogEscape(value);
+  const summaryLogDetailRange = range => Array.isArray(range) && range.length >= 2
+    ? summaryLogValue(range[0], '') + '–' + summaryLogValue(range[1], '')
+    : '—';
+  const summaryLogDetailKey = item => item && (item.measuredAt || item.isoDate || item.date || '');
+  const summaryCloseLogDetail = () => {
+    const panel = document.getElementById('s-log-detail');
+    if (!panel) return;
+    panel.hidden = true;
+    panel.innerHTML = '';
+  };
+  const summaryRenderLogDetail = item => {
+    const panel = document.getElementById('s-log-detail');
+    if (!panel) return;
+    if (!item) {
+      summaryCloseLogDetail();
+      return;
+    }
+    const composition = item.composition || {};
+    const ranges = composition.ranges || {};
+    const proportions = composition.proportions || {};
+    const evaluations = composition.evaluation || {};
+    const compositionRows = [
+      ['น้ำหนัก', 'weight', 'kg'], ['Fat mass', 'fat', 'kg'], ['Bone mass', 'bone', 'kg'],
+      ['Protein mass', 'protein', 'kg'], ['Water weight', 'water', 'kg'], ['Muscle mass', 'muscle', 'kg'],
+      ['Skeletal muscle', 'skeletalMuscle', 'kg']
+    ];
+    const segmentParts = [
+      ['แขนซ้าย', 'la'], ['แขนขวา', 'ra'], ['ลำตัว', 'tr'], ['ขาซ้าย', 'll'], ['ขาขวา', 'rl']
+    ];
+    const metricRows = [
+      ['BMI', item.bmi, ''], ['ไขมันช่องท้อง', item.vis, ''], ['BMR', item.bmr, ' kcal'],
+      ['Fat-free mass', item.fatFreeMass, ' kg'], ['ไขมันใต้ผิวหนัง', item.subcutaneousFat, '%'],
+      ['ASMI', item.asmi, ' kg/m²'], ['WHR', item.whr, ''], ['อายุร่างกาย', item.bodyAge, ' ปี'],
+      ['คะแนน', item.score, '/100']
+    ];
+    const controlRows = [
+      ['เป้าหมายน้ำหนัก', item.targetWeight, ' kg'], ['ควบคุมน้ำหนัก', item.weightControl, ' kg'],
+      ['ควบคุมไขมัน', item.fatControl, ' kg'], ['ควบคุมกล้ามเนื้อ', item.muscleControl, ' kg']
+    ];
+    const exerciseRows = [
+      ['กระโดดเชือกเร็ว', 'fastSkippingRopes'], ['เดิน', 'walk'], ['เดินเร็ว', 'walkQuickly'],
+      ['วิ่งช้า', 'runSlowly'], ['โยคะ', 'yoga'], ['จักรยาน', 'bike'], ['บาสเกตบอล', 'basketball'],
+      ['ว่ายน้ำ', 'swim'], ['ขึ้นบันได', 'climbStairs'], ['ปีนเขา', 'climbMountains']
+    ];
+    const detailValue = (value, unit, digits) => Number.isFinite(Number(value)) ? summaryLogValue(value, unit, digits) : '—';
+    const compositionHtml = compositionRows.map(([label, key, unit]) => {
+      const sourceKey = key === 'fat' ? 'fat' : key === 'bone' ? 'boneMass' : key === 'protein' ? 'proteinMass' : key === 'water' ? 'waterWeight' : key === 'skeletalMuscle' ? 'skeletalMuscle' : key === 'muscle' ? 'muscle' : null;
+      const mass = key === 'weight' ? summaryEstimatedWeight(item) : item[sourceKey];
+      return '<tr><td>' + label + '</td><td>' + detailValue(mass, ' ' + unit) + '</td><td>' + detailValue(proportions[key], '%') + '</td><td>' + summaryLogDetailRange(ranges[key]) + '</td><td>' + summaryLogDetailText(evaluations[key]) + '</td></tr>';
+    }).join('');
+    const segmentHtml = segmentParts.map(([label, key]) => '<tr><td>' + label + '</td><td>' + summaryLogSegmentValue(item, 'sf', key) + '</td><td>' + summaryLogSegmentPercentValue(item, 'sfPct', key) + '</td><td>' + summaryLogSegmentValue(item, 'sm', key) + '</td><td>' + summaryLogSegmentPercentValue(item, 'smPct', key) + '</td></tr>').join('');
+    const impedanceHtml = segmentParts.map(([label, key]) => '<tr><td>' + label + '</td><td>' + summaryLogImpedanceValue(item, 20, key) + '</td><td>' + summaryLogImpedanceValue(item, 100, key) + '</td></tr>').join('');
+    const metricHtml = metricRows.map(([label, value, unit]) => '<div class="s-log-detail-row"><span>' + label + '</span><span>' + detailValue(value, unit, label === 'BMI' ? 1 : label === 'WHR' ? 2 : /BMR|อายุ/.test(label) ? 0 : undefined) + '</span></div>').join('');
+    const controlHtml = controlRows.map(([label, value, unit]) => '<div class="s-log-detail-row"><span>' + label + '</span><span>' + detailValue(value, unit) + '</span></div>').join('');
+    const balance = item.balance || {};
+    const balanceHtml = [['ช่วงบน', 'upper'], ['ช่วงล่าง', 'lower'], ['บน-ล่าง', 'upperLower']].map(([label, key]) => '<div class="s-log-detail-row"><span>' + label + '</span><span>' + summaryLogDetailText(balance[key]) + '</span></div>').join('');
+    const exerciseHtml = exerciseRows.map(([label, key]) => '<div class="s-log-detail-row"><span>' + label + '</span><span>' + detailValue(item.exerciseCalories && item.exerciseCalories[key], ' kcal', 0) + '</span></div>').join('');
+    panel.innerHTML = '<div class="s-log-detail-header"><div><h3 class="s-log-detail-title">รายละเอียดผลสแกน · ' + summaryLogDetailText(item.date) + '</h3><p class="s-log-detail-meta">' + summaryLogDetailText(item.measuredAt || item.time) + ' · โปรไฟล์ ' + summaryLogDetailText(item.profileId) + ' · ไฟล์ ' + summaryLogDetailText(item.sourceFile) + '</p></div><button class="s-log-detail-close" type="button" data-log-detail-close aria-label="ปิดรายละเอียดผลสแกน">ปิด</button></div>'
+      + '<div class="s-log-detail-grid">'
+      + '<section class="s-log-detail-card s-log-detail-card-wide"><h4>องค์ประกอบร่างกายจากรายงาน</h4><table class="s-log-detail-table"><thead><tr><th>รายการ</th><th>น้ำหนัก</th><th>สัดส่วน</th><th>ช่วงอ้างอิง</th><th>ผลประเมิน</th></tr></thead><tbody>' + compositionHtml + '</tbody></table></section>'
+      + '<section class="s-log-detail-card"><h4>ตัวชี้วัด</h4>' + metricHtml + '</section>'
+      + '<section class="s-log-detail-card"><h4>เป้าหมายและการควบคุม</h4>' + controlHtml + '</section>'
+      + '<section class="s-log-detail-card s-log-detail-card-wide"><h4>วิเคราะห์แยกส่วน</h4><table class="s-log-detail-table"><thead><tr><th>ส่วน</th><th>ไขมัน kg</th><th>ไขมัน %</th><th>กล้ามเนื้อ kg</th><th>กล้ามเนื้อ %</th></tr></thead><tbody>' + segmentHtml + '</tbody></table></section>'
+      + '<section class="s-log-detail-card s-log-detail-card-wide"><h4>Bioelectrical impedance</h4><table class="s-log-detail-table"><thead><tr><th>ส่วน</th><th>20 kHz</th><th>100 kHz</th></tr></thead><tbody>' + impedanceHtml + '</tbody></table></section>'
+      + '<section class="s-log-detail-card"><h4>สมดุลร่างกาย</h4>' + balanceHtml + '</section>'
+      + '<section class="s-log-detail-card"><h4>พลังงานกิจกรรม 30 นาที</h4>' + exerciseHtml + '</section>'
+      + '</div>';
+    panel.hidden = false;
+  };
+  const summaryEstimatedWeight = (item) => {
+    const explicitWeight = Number(item.weight);
+    if (Number.isFinite(explicitWeight)) return explicitWeight;
+    const fat = Number(item.fat);
+    const bodyFat = Number(item.bf);
+    return Number.isFinite(fat) && Number.isFinite(bodyFat) && bodyFat > 0
+      ? fat / (bodyFat / 100)
+      : null;
+  };
+  const summaryLogColumns = [
+    {label: 'วันที่', render: item => item.date || '—'},
+    {label: 'เวลา', render: item => item.time || item.scanTime || '—'},
+    {label: 'น้ำหนัก', render: item => summaryLogValue(summaryEstimatedWeight(item), ' kg')},
+    {label: 'Fat mass', render: item => summaryLogValue(item.fat, ' kg')},
+    {label: 'Body fat', render: item => summaryLogValue(item.bf, '%')},
+    {label: 'Muscle mass', render: item => summaryLogValue(item.muscle, ' kg')},
+    {label: 'กล้ามเนื้อโครงร่าง', render: item => summaryLogValue(item.skeletalMuscle, ' kg')},
+    {label: 'น้ำในร่างกาย', render: item => summaryLogValue(item.waterWeight, ' kg')},
+    {label: 'Protein mass', render: item => summaryLogValue(item.proteinMass, ' kg')},
+    {label: 'Bone mass', render: item => summaryLogValue(item.boneMass, ' kg')},
+    {label: 'BMI', render: item => summaryLogValue(item.bmi, '', 1)},
+    {label: 'ไขมันช่องท้อง', render: item => summaryLogValue(item.vis, '', 0)},
+    {label: 'BMR', render: item => summaryLogValue(item.bmr, ' kcal', 0)},
+    {label: 'Fat-free mass', render: item => summaryLogValue(item.fatFreeMass, ' kg')},
+    {label: 'ไขมันใต้ผิวหนัง', render: item => summaryLogValue(item.subcutaneousFat, '%')},
+    {label: 'ASMI', render: item => summaryLogValue(item.asmi, ' kg/m²', 1)},
+    {label: 'WHR', render: item => summaryLogValue(item.whr, '', 2)},
+    {label: 'อายุร่างกาย', render: item => summaryLogValue(item.bodyAge, ' ปี', 0)},
+    {label: 'คะแนน', render: item => summaryLogValue(item.score, '/100', 0)},
+    {label: 'เป้าหมายน้ำหนัก', render: item => summaryLogValue(item.targetWeight, ' kg')},
+    {label: 'ควบคุมน้ำหนัก', render: item => summaryLogValue(item.weightControl, ' kg')},
+    {label: 'ควบคุมไขมัน', render: item => summaryLogValue(item.fatControl, ' kg')},
+    {label: 'ควบคุมกล้ามเนื้อ', render: item => summaryLogValue(item.muscleControl, ' kg')},
+    {label: 'FAT แขนซ้าย', render: item => summaryLogSegmentValue(item, 'sf', 'la')},
+    {label: 'MUSCLE แขนซ้าย', render: item => summaryLogSegmentValue(item, 'sm', 'la')},
+    {label: 'FAT แขนขวา', render: item => summaryLogSegmentValue(item, 'sf', 'ra')},
+    {label: 'MUSCLE แขนขวา', render: item => summaryLogSegmentValue(item, 'sm', 'ra')},
+    {label: 'FAT ลำตัว', render: item => summaryLogSegmentValue(item, 'sf', 'tr')},
+    {label: 'MUSCLE ลำตัว', render: item => summaryLogSegmentValue(item, 'sm', 'tr')},
+    {label: 'FAT ขาซ้าย', render: item => summaryLogSegmentValue(item, 'sf', 'll')},
+    {label: 'MUSCLE ขาซ้าย', render: item => summaryLogSegmentValue(item, 'sm', 'll')},
+    {label: 'FAT ขาขวา', render: item => summaryLogSegmentValue(item, 'sf', 'rl')},
+    {label: 'MUSCLE ขาขวา', render: item => summaryLogSegmentValue(item, 'sm', 'rl')},
+    {label: 'FAT % แขนซ้าย', render: item => summaryLogSegmentPercentValue(item, 'sfPct', 'la')},
+    {label: 'MUSCLE % แขนซ้าย', render: item => summaryLogSegmentPercentValue(item, 'smPct', 'la')},
+    {label: 'FAT % แขนขวา', render: item => summaryLogSegmentPercentValue(item, 'sfPct', 'ra')},
+    {label: 'MUSCLE % แขนขวา', render: item => summaryLogSegmentPercentValue(item, 'smPct', 'ra')},
+    {label: 'FAT % ลำตัว', render: item => summaryLogSegmentPercentValue(item, 'sfPct', 'tr')},
+    {label: 'MUSCLE % ลำตัว', render: item => summaryLogSegmentPercentValue(item, 'smPct', 'tr')},
+    {label: 'FAT % ขาซ้าย', render: item => summaryLogSegmentPercentValue(item, 'sfPct', 'll')},
+    {label: 'MUSCLE % ขาซ้าย', render: item => summaryLogSegmentPercentValue(item, 'smPct', 'll')},
+    {label: 'FAT % ขาขวา', render: item => summaryLogSegmentPercentValue(item, 'sfPct', 'rl')},
+    {label: 'MUSCLE % ขาขวา', render: item => summaryLogSegmentPercentValue(item, 'smPct', 'rl')},
+    {label: '20 kHz แขนซ้าย', render: item => summaryLogImpedanceValue(item, 20, 'la')},
+    {label: '20 kHz แขนขวา', render: item => summaryLogImpedanceValue(item, 20, 'ra')},
+    {label: '20 kHz ลำตัว', render: item => summaryLogImpedanceValue(item, 20, 'tr')},
+    {label: '20 kHz ขาซ้าย', render: item => summaryLogImpedanceValue(item, 20, 'll')},
+    {label: '20 kHz ขาขวา', render: item => summaryLogImpedanceValue(item, 20, 'rl')},
+    {label: '100 kHz แขนซ้าย', render: item => summaryLogImpedanceValue(item, 100, 'la')},
+    {label: '100 kHz แขนขวา', render: item => summaryLogImpedanceValue(item, 100, 'ra')},
+    {label: '100 kHz ลำตัว', render: item => summaryLogImpedanceValue(item, 100, 'tr')},
+    {label: '100 kHz ขาซ้าย', render: item => summaryLogImpedanceValue(item, 100, 'll')},
+    {label: '100 kHz ขาขวา', render: item => summaryLogImpedanceValue(item, 100, 'rl')},
+    {label: 'รายละเอียด', render: item => item.sourceFile ? '<button class="s-log-detail-button" type="button" data-log-detail="' + summaryLogEscape(summaryLogDetailKey(item)) + '">ดูเต็ม</button>' : '<span class="s-log-detail-missing">ไม่มีรายงาน</span>'}
+  ];
+  const summaryGoalProgress = (start, current, target, lowerIsBetter) => {
+    const startValue = Number(start);
+    const currentValue = Number(current);
+    const targetValue = Number(target);
+    if (![startValue, currentValue, targetValue].every(Number.isFinite)) return 0;
+    const total = lowerIsBetter ? startValue - targetValue : targetValue - startValue;
+    const done = lowerIsBetter ? startValue - currentValue : currentValue - startValue;
+    if (total <= 0) return 0;
+    return Math.max(0, Math.min(100, (done / total) * 100));
+  };
+  const summarySetProgress = (id, value) => {
+    const percent = Math.round(value);
+    const fill = document.getElementById(id);
+    if (!fill) return percent;
+    fill.style.setProperty('--fill', percent + '%');
+    const bar = fill.parentElement;
+    if (bar) bar.setAttribute('aria-valuenow', String(percent));
+    return percent;
+  };
+
+  const summaryPriorWeight = summaryEstimatedWeight(summaryPrior);
+  const summaryPriorLabel = Number(summaryLatest.daysFromStart) - Number(summaryPrior.daysFromStart) === 1 ? 'เมื่อวาน' : 'ครั้งก่อน';
+  const summaryDirectionText = (value, unit, period) => {
+    const number = Number(value);
+    if (!Number.isFinite(number)) return '—';
+    if (Math.abs(number) < 0.05) return 'คงที่ · ' + period;
+    return (number < 0 ? 'ลดลง ' : 'เพิ่มขึ้น ') + Math.abs(number).toFixed(1) + unit + ' ' + period;
+  };
+
+  const summaryFatDelta = summaryLatest.fat - summaryPrior.fat;
+  const summaryMuscleDelta = summaryLatest.muscle - summaryPrior.muscle;
+  const summaryLatestScan = summaryScanParts(summaryLatest);
+
+  summarySet('s-scan-date', 'ผลสแกน ' + summaryLatestScan.date + ' · ' + summaryLatestScan.time);
+  summarySet('s-footer-scan-date', 'อัปเดตจากผลสแกนวันที่ ' + summaryLatestScan.date + ' เวลา ' + summaryLatestScan.time);
+  summarySet('s-score', summaryLatest.score);
+  summarySet('s-weight', summaryNum(summaryLatest.weight));
+  summarySet('s-fat', summaryNum(summaryLatest.fat));
+  summarySet('s-muscle', summaryNum(summaryLatest.muscle));
+  summarySet('s-weight-key', summaryDirectionText(summaryLatest.weight - summaryPriorWeight, ' kg', summaryPriorLabel));
+  summarySet('s-fat-key', summaryDirectionText(summaryFatDelta, ' kg', summaryPriorLabel));
+  summarySet('s-muscle-key', summaryDirectionText(summaryMuscleDelta, ' kg', summaryPriorLabel));
+
+  summarySet('s-weight-target', summaryNum(summaryTargetWeight));
+  summarySet('s-weight-gap', summaryGap(summaryLatest.weight, summaryTargetWeight));
+  summarySet('s-fat-target', summaryNum(summaryTargetFat));
+  summarySet('s-fat-gap', summaryGap(summaryLatest.fat, summaryTargetFat));
+  summarySet('s-muscle-target', summaryNum(summaryTargetMuscle));
+  summarySet('s-muscle-gap', summaryGap(summaryLatest.muscle, summaryTargetMuscle));
+  const summaryWeightProgress = summarySetProgress('s-weight-progress', summaryGoalProgress(summaryEstimatedWeight(summaryData[0]), summaryLatest.weight, summaryTargetWeight, true));
+  const summaryFatProgress = summarySetProgress('s-fat-progress', summaryGoalProgress(summaryData[0].fat, summaryLatest.fat, summaryTargetFat, true));
+  const summaryMuscleProgress = summarySetProgress('s-muscle-progress', summaryGoalProgress(summaryData[0].muscle, summaryLatest.muscle, summaryTargetMuscle, false));
+  summarySet('s-weight-progress-label', 'ไปแล้ว ' + summaryWeightProgress + '%');
+  summarySet('s-fat-progress-label', 'ไปแล้ว ' + summaryFatProgress + '%');
+  summarySet('s-muscle-progress-label', 'ไปแล้ว ' + summaryMuscleProgress + '%');
+
+  const summaryBaselineIndexForRange = (data, latest, range) => {
+    if (!Array.isArray(data) || !data.length) return -1;
+    if (String(range) === 'start') return 0;
+    const targetDay = Number(latest && latest.daysFromStart) - Number(range);
+    let bestIndex = 0;
+    let bestDistance = Infinity;
+    for (let index = 0; index < data.length - 1; index += 1) {
+      const distance = Math.abs(Number(data[index].daysFromStart) - targetDay);
+      if (distance <= bestDistance) {
+        bestIndex = index;
+        bestDistance = distance;
+      }
+    }
+    return bestIndex;
+  };
+  const summaryFindBaselineIndex = (range) => summaryBaselineIndexForRange(summaryData, summaryLatest, range);
+
+  const summaryFindWindow = (range) => {
+    const config = summaryPeriodConfig[String(range)];
+    if (!config) return null;
+    const availableDays = Number(summaryLatest.daysFromStart) - Number(summaryStart.daysFromStart);
+    if (config.days != null && availableDays < config.days) {
+      return {available: false, config, availableDays};
+    }
+    const baselineIndex = summaryFindBaselineIndex(range);
+    const baseline = summaryData[baselineIndex];
+    return {
+      available: true,
+      config,
+      baseline,
+      baselineIndex,
+      chartData: summaryData.slice(baselineIndex),
+      elapsedDays: Number(summaryLatest.daysFromStart) - Number(baseline.daysFromStart)
+    };
+  };
+
+  // คำแนะนำใช้ค่าเฉลี่ย 7 วันแบบ calendar-day window เสมอ เพื่อลดความผันผวนของ BIA รายวัน
+  // เมื่อเพิ่มผลสแกนใหม่ ทุก window จะคำนวณจาก DATA ทั้งหมดใหม่อัตโนมัติ
+  const summarySevenDayAverage = (endDay) => {
+    const lastDay = Number(endDay);
+    const items = summaryData.filter(item => {
+      const day = Number(item && item.daysFromStart);
+      return Number.isFinite(day) && day >= lastDay - 6 && day <= lastDay;
+    });
+    const average = key => {
+      const values = items.map(item => Number(item[key])).filter(Number.isFinite);
+      return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
+    };
+    return {items, count: items.length, fat: average('fat'), muscle: average('muscle'), bf: average('bf'), waterWeight: average('waterWeight')};
+  };
+
+  const summarySevenDayRecommendation = () => {
+    const current = summarySevenDayAverage(summaryLatest.daysFromStart);
+    const previous = summarySevenDayAverage(Number(summaryLatest.daysFromStart) - 7);
+    if (current.count < 2 || previous.count < 2) {
+      return {title: 'ขอเวลาให้ร่างกายแสดงแนวโน้มอีกนิด', note: 'ตอนนี้ข้อมูลในแต่ละสัปดาห์ยังน้อยเกินไป จึงยังไม่ควรรีบเปลี่ยนแผนจากผลสแกนไม่กี่ครั้ง', action: 'ทำแบบเดิมต่อไปก่อน แล้ววัดให้ได้อย่างน้อย 2 ครั้งในแต่ละช่วง 7 วัน', encourage: 'เราเอาความชัดเจน ไม่ใช่ความรีบครับ'};
+    }
+    const averagedLatest = {bf: current.bf, waterWeight: current.waterWeight};
+    const averagedBaseline = {bf: previous.bf, waterWeight: previous.waterWeight};
+    const fatDelta = current.fat - previous.fat;
+    const muscleDelta = current.muscle - previous.muscle;
+    const waterDelta = current.waterWeight - previous.waterWeight;
+    const evidence = 'เมื่อดูเฉลี่ย 7 วัน ร่างกายลดไขมันลง ' + Math.abs(fatDelta).toFixed(1) + ' กก. กล้ามเนื้อ ' + (muscleDelta >= 0 ? 'ยังคงอยู่' : 'ลดลงเล็กน้อย') + ' และระดับน้ำแทบ

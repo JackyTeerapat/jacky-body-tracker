@@ -1,0 +1,609 @@
+ไม่เปลี่ยน.';
+    const fatIsDropping = fatDelta <= -0.15;
+    const fatIsFlat = Math.abs(fatDelta) < 0.15;
+    const muscleIsStable = muscleDelta >= -0.15;
+    if (fatIsDropping && muscleIsStable) {
+      return {
+        title: 'กำลังไปได้ดี · ทำแบบเดิมต่อ',
+        note: evidence + ' แปลว่าแผนที่ทำอยู่กำลังพาไขมันลง โดยยังไม่เห็นสัญญาณว่าร่างกายต้องแลกกล้ามเนื้อไป.',
+        action: 'ตอนนี้ยังไม่ต้องลดข้าวหรือเพิ่ม cardio เพิ่ม ทำแบบเดิมให้ครบอีก 1–2 สัปดาห์ก่อน; ถ้าอยากเร่ง ค่อยเพิ่มเดินหรือ Zone 2 แค่ 1 อย่าง',
+        encourage: 'นี่คือการลดแบบที่เราอยากได้ครับ ทำต่อแบบนี้ได้เลย'
+      };
+    }
+    if (fatIsDropping) {
+      return {
+        title: 'ไขมันลงดี แต่ยังไม่ต้องเร่ง',
+        note: evidence + ' มีสัญญาณว่ากล้ามเนื้อลดตามมานิดหน่อย จึงอย่าเพิ่งตัดข้าวหรือเพิ่ม cardio ให้หนักกว่าเดิม.',
+        action: 'คงอาหารและ cardio เดิมไว้ก่อน แล้วโฟกัสให้กินโปรตีนพอ นอนพอ และเล่นเวทให้มีคุณภาพ',
+        encourage: 'เราอยากผอมลงแบบยังแข็งแรง ไม่ใช่รีบจนล้าครับ'
+      };
+    }
+    if (fatIsFlat && muscleIsStable) {
+      return {
+        title: 'ยังไม่ต้องรีบปรับแผน',
+        note: 'ช่วงนี้ผลยังดูนิ่ง ๆ แต่ยังเร็วเกินไปจะเรียกว่าตัน เพราะร่างกายและเครื่องสแกนแกว่งได้ตามปกติ.',
+        action: 'ทำแบบเดิมต่ออีก 1 สัปดาห์ก่อน; ถ้ายังนิ่งครบ 2 สัปดาห์ ค่อยเลือกเพิ่มกิจกรรมเบา ๆ เพียง 1 อย่าง',
+        encourage: 'อย่าให้ความเงียบของตัวเลขทำให้คุณเสียจังหวะครับ'
+      };
+    }
+    return {
+      title: 'ถึงเวลาปรับ แต่ปรับทีละอย่าง',
+      note: evidence + ' ตอนนี้แผนยังไม่ตอบสนองอย่างที่ต้องการ แต่เราไม่แก้ด้วยการลดข้าวและเพิ่ม cardio พร้อมกัน เพราะจะไม่รู้ว่าอะไรได้ผล.',
+      action: 'เช็กความสม่ำเสมอของอาหารก่อน; ถ้าแนวโน้มนี้ต่อเนื่องครบ 2 สัปดาห์ ค่อยเลือกเพิ่มกิจกรรมหรือปรับอาหารเพียง 1 อย่าง',
+      encourage: 'แก้ทีละจุด คุณจะคุมเกมได้มากกว่าครับ'
+    };
+  };
+
+  const summaryHasFields = (item, fields) => {
+    const requiredFields = Array.isArray(fields) ? fields : [fields];
+    return requiredFields.every(field => {
+      const values = item && item[field];
+      return values && typeof values === 'object' && Object.values(values).some(value => Number.isFinite(Number(value)));
+    });
+  };
+
+  const summaryFindBaselineWithFields = (range, fields) => {
+    const window = summaryFindWindow(range);
+    if (!window || !window.available) return null;
+    if (summaryHasFields(window.baseline, fields)) return window.baseline;
+    return String(range) === 'start' ? summaryData.find(item => summaryHasFields(item, fields)) || null : null;
+  };
+
+  const summaryUpdateRangeAvailability = () => {
+    document.querySelectorAll('.s-range-controls button').forEach(button => {
+      const range = String(button.dataset.range);
+      const window = summaryFindWindow(range);
+      const unavailable = Boolean(window && !window.available);
+      const label = button.textContent.trim();
+      button.disabled = unavailable;
+      button.setAttribute('aria-disabled', String(unavailable));
+      button.setAttribute('aria-label', unavailable ? label + ' — ข้อมูลยังไม่ถึง' : label);
+      if (unavailable) {
+        button.title = 'ข้อมูลยังไม่ถึง';
+        button.setAttribute('aria-pressed', 'false');
+      } else {
+        button.removeAttribute('title');
+      }
+    });
+  };
+  summaryUpdateRangeAvailability();
+
+  const summaryChartLatestDate = new Date(String(summaryStore.LATEST_DATE) + 'T00:00:00Z');
+  const summaryChartStartDate = new Date(summaryChartLatestDate.getTime() - Number(summaryLatest.daysFromStart) * 86400000);
+  const summaryChartMonths = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+  const summaryChartDateLabel = (daysFromStart) => {
+    if (!Number.isFinite(Number(daysFromStart)) || Number.isNaN(summaryChartStartDate.getTime())) return '—';
+    const date = new Date(summaryChartStartDate.getTime() + Number(daysFromStart) * 86400000);
+    return date.getUTCDate() + ' ' + summaryChartMonths[date.getUTCMonth()];
+  };
+
+  const summaryAggregateChartData = (chartData, key) => {
+    const points = Array.isArray(chartData)
+      ? chartData.filter(item => Number.isFinite(Number(item && item.daysFromStart)) && Number.isFinite(Number(item && item[key])))
+      : [];
+    if (!points.length) return [];
+    const firstDay = Number(points[0].daysFromStart);
+    const lastDay = Number(points[points.length - 1].daysFromStart);
+    const elapsedDays = Math.max(0, lastDay - firstDay);
+    if (points.length <= 8 && elapsedDays < 20) return points;
+    const bucketCount = elapsedDays >= 90 || points.length > 32 ? 9 : 6;
+    const span = Math.max(1, lastDay - firstDay);
+    const buckets = Array.from({length: bucketCount}, () => []);
+    points.forEach(point => {
+      const position = (Number(point.daysFromStart) - firstDay) / span;
+      const bucketIndex = Math.min(bucketCount - 1, Math.max(0, Math.floor(position * bucketCount)));
+      buckets[bucketIndex].push(point);
+    });
+    return buckets.filter(bucket => bucket.length).map((bucket, bucketIndex, visibleBuckets) => {
+      const first = bucket[0];
+      const last = bucket[bucket.length - 1];
+      const averageDay = bucket.reduce((sum, point) => sum + Number(point.daysFromStart), 0) / bucket.length;
+      const sortedValues = bucket.map(point => Number(point[key])).sort((left, right) => left - right);
+      const middle = Math.floor(sortedValues.length / 2);
+      const typicalValue = sortedValues.length % 2
+        ? sortedValues[middle]
+        : (sortedValues[middle - 1] + sortedValues[middle]) / 2;
+      const isFirst = bucketIndex === 0;
+      const isLast = bucketIndex === visibleBuckets.length - 1;
+      return {
+        ...last,
+        daysFromStart: isFirst ? Number(first.daysFromStart) : isLast ? Number(last.daysFromStart) : +averageDay.toFixed(2),
+        [key]: +(isFirst ? Number(first[key]) : isLast ? Number(last[key]) : typicalValue).toFixed(2)
+      };
+    });
+  };
+
+  const summaryChartBounds = (chartData, key, target, projectionPoints) => {
+    const values = chartData.map(item => Number(item[key])).filter(Number.isFinite);
+    if (Array.isArray(projectionPoints)) {
+      projectionPoints.forEach(point => {
+        if (Number.isFinite(Number(point.value))) values.push(Number(point.value));
+      });
+    }
+    const actualMin = Math.min(...values);
+    const actualMax = Math.max(...values);
+    const span = Math.max(actualMax - actualMin, 0.6);
+    const padding = Math.max(span * 0.22, 0.35);
+    const min = Math.floor((actualMin - padding) * 10) / 10;
+    const max = Math.ceil((actualMax + padding) * 10) / 10;
+    return {min, max, showTarget: target >= min && target <= max};
+  };
+
+  const summaryChartXDomain = (chartData, projectionPoints, latestDay) => {
+    const actualDays = Array.isArray(chartData)
+      ? chartData.map(item => Number(item && item.daysFromStart)).filter(Number.isFinite)
+      : [];
+    if (!actualDays.length) return {};
+    const projectionBase = Number(latestDay);
+    const projectedDays = Number.isFinite(projectionBase) && Array.isArray(projectionPoints)
+      ? projectionPoints.map(point => projectionBase + Number(point && point.day)).filter(Number.isFinite)
+      : [];
+    return {
+      min: Math.min(...actualDays),
+      max: Math.max(...actualDays, ...projectedDays)
+    };
+  };
+
+  const summaryChartOptions = (unit, bounds, formatDate, xDomain = {}) => ({
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: {mode: 'index', intersect: false},
+    animation: {duration: 380},
+    plugins: {
+      legend: {display: false},
+      tooltip: {
+        padding: 9,
+        displayColors: false,
+        callbacks: {
+          title: (contexts) => contexts.length ? formatDate(contexts[0].parsed.x) : '',
+          label: (context) => context.dataset.label + ': ' + Number(context.parsed.y).toFixed(1) + ' ' + unit
+        }
+      }
+    },
+    scales: {
+      x: {
+        type: 'linear',
+        min: xDomain.min,
+        max: xDomain.max,
+        grid: {display: false},
+        ticks: {color: '#879596', font: {size: 9}, maxTicksLimit: 5, maxRotation: 0, callback: (value) => formatDate(value)}
+      },
+      y: {min: bounds.min, max: bounds.max, grid: {color: '#edf1f0'}, ticks: {color: '#879596', font: {size: 9}, maxTicksLimit: 5}}
+    }
+  });
+
+  const summaryMakeChart = (canvasId, chartData, key, target, color, fillColor, unit, summaryProjection) => {
+    if (!window.Chart) return null;
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return null;
+    const existingChart = window.Chart.getChart ? window.Chart.getChart(canvas) : null;
+    if (existingChart) existingChart.destroy();
+    const projectionPoints = summaryProjection && Array.isArray(summaryProjection.points)
+      ? summaryProjection.points
+      : [];
+    const visibleChartData = summaryAggregateChartData(chartData, key);
+    const bounds = summaryChartBounds(visibleChartData, key, target, projectionPoints);
+    const summaryLatestDay = Number(summaryLatest.daysFromStart);
+    const xDomain = summaryChartXDomain(visibleChartData, projectionPoints, summaryLatestDay);
+    const datasets = [
+      {
+        label: key === 'fat' ? 'ไขมัน' : 'กล้ามเนื้อ',
+        data: visibleChartData.map(item => ({x: Number(item.daysFromStart), y: item[key]})),
+        borderColor: color,
+        backgroundColor: fillColor,
+        borderWidth: 2.5,
+        pointRadius: visibleChartData.length > 8 ? 1.8 : 2.5,
+        pointHoverRadius: 4,
+        tension: visibleChartData.length > 8 ? .28 : .2,
+        fill: true
+      }
+    ];
+    if (bounds.showTarget) {
+      datasets.push({
+        label: 'เป้าหมาย',
+        data: visibleChartData.map(item => ({x: Number(item.daysFromStart), y: target})),
+        borderColor: '#8a9899',
+        borderDash: [4, 4],
+        borderWidth: 1.25,
+        pointRadius: 0,
+        tension: 0,
+        fill: false
+      });
+    }
+    if (projectionPoints.length) {
+      const currentPoint = visibleChartData[visibleChartData.length - 1] || chartData[chartData.length - 1];
+      datasets.push({
+        label: 'คาดการณ์',
+        data: [{x: summaryLatestDay, y: currentPoint[key]}].concat(
+          projectionPoints.map(point => ({x: summaryLatestDay + Number(point.day), y: point.value}))
+        ),
+        borderColor: color,
+        borderDash: [6, 5],
+        borderWidth: 2,
+        pointRadius: 0,
+        pointHoverRadius: 0,
+        tension: 0,
+        fill: false,
+        spanGaps: true
+      });
+    }
+    return new window.Chart(canvas, {
+      type: 'line',
+      data: {
+        datasets
+      },
+      options: summaryChartOptions(unit, bounds, summaryChartDateLabel, xDomain)
+    });
+  };
+
+  const summaryRatePerPeriod = (delta, elapsedDays, periodDays) => {
+    const days = Number(elapsedDays);
+    const change = Number(delta);
+    return days > 0 && Number.isFinite(change) ? (change / days) * Number(periodDays || 30) : null;
+  };
+  const summaryChangePhrase = (value, unit) => {
+    const number = Number(value);
+    if (!Number.isFinite(number) || Math.abs(number) < 0.05) return 'ทรงตัว';
+    return (number < 0 ? 'ลดลง ' : 'เพิ่มขึ้น ') + Math.abs(number).toFixed(1) + unit;
+  };
+  const summaryBuildRecommendation = (label, latest, baseline, fatDelta, muscleDelta, elapsedDays) => {
+    const period = label === 'ตั้งแต่เริ่ม' ? 'ตั้งแต่เริ่มบันทึก' : label + 'ที่ผ่านมา';
+    const fatRate = summaryRatePerPeriod(fatDelta, elapsedDays, 30);
+    const muscleRate = summaryRatePerPeriod(muscleDelta, elapsedDays, 30);
+    const bodyFatDelta = latest && baseline ? Number(latest.bf) - Number(baseline.bf) : null;
+    const waterDelta = latest && baseline ? Number(latest.waterWeight) - Number(baseline.waterWeight) : null;
+    const fatDown = fatRate != null && fatRate <= -0.15;
+    const fatUp = fatRate != null && fatRate >= 0.15;
+    const muscleDown = muscleRate != null && muscleRate <= -0.25;
+    const muscleUp = muscleRate != null && muscleRate >= 0.15;
+    const bodyFatText = Number.isFinite(bodyFatDelta) ? ' ไขมัน % ' + summaryChangePhrase(bodyFatDelta, ' จุด') + '.' : '';
+    const hydrationText = Number.isFinite(waterDelta)
+      ? ' น้ำในร่างกาย ' + summaryChangePhrase(waterDelta, ' kg') + '.'
+      : ' ยังไม่มีค่าน้ำในร่างกายย้อนหลัง จึงแยกผลของน้ำออกจากไขมันหรือกล้ามเนื้อไม่ได้.';
+
+    if (fatDown && muscleDown) {
+      return {
+        title: 'รักษากล้ามเนื้อก่อน',
+        note: period + ' ไขมัน' + summaryChangePhrase(fatDelta, ' kg') + ' แต่กล้ามเนื้อ' + summaryChangePhrase(muscleDelta, ' kg') + '.' + bodyFatText + hydrationText + ' ช่วงถัดไปเน้นโปรตีนให้พอ ฝึกแรงต้าน และวัดซ้ำในเงื่อนไขเดิม 2–3 ครั้ง'
+      };
+    }
+    if (fatDown && muscleUp) {
+      return {
+        title: 'แนวโน้มไปถูกทาง',
+        note: period + ' ไขมัน' + summaryChangePhrase(fatDelta, ' kg') + ' และกล้ามเนื้อ' + summaryChangePhrase(muscleDelta, ' kg') + '.' + bodyFatText + ' คงโปรตีนกับการฝึกแรงต้านไว้ และติดตามต่อโดยไม่เร่งลดอาหารเกินไป'
+      };
+    }
+    if (fatDown) {
+      return {
+        title: 'ลดไขมันต่อได้',
+        note: period + ' ไขมัน' + summaryChangePhrase(fatDelta, ' kg') + ' ขณะที่กล้ามเนื้อ' + summaryChangePhrase(muscleDelta, ' kg') + '.' + bodyFatText + hydrationText + ' คุมพลังงานให้พอดี รักษาโปรตีนและฝึกแรงต้านต่อเนื่อง'
+      };
+    }
+    if (fatUp && muscleDown) {
+      return {
+        title: 'ชะลอการลดก่อน',
+        note: period + ' ไขมัน' + summaryChangePhrase(fatDelta, ' kg') + ' พร้อมกับกล้ามเนื้อ' + summaryChangePhrase(muscleDelta, ' kg') + '.' + bodyFatText + hydrationText + ' อย่าเพิ่งลดอาหารเพิ่ม ให้เช็กโปรตีน การพักผ่อน และเงื่อนไขการวัดก่อน'
+      };
+    }
+    if (fatUp && muscleUp) {
+      return {
+        title: 'กล้ามเนื้อเพิ่ม แต่ไขมันยังเพิ่ม',
+        note: period + ' ไขมัน' + summaryChangePhrase(fatDelta, ' kg') + ' และกล้ามเนื้อ' + summaryChangePhrase(muscleDelta, ' kg') + '.' + bodyFatText + ' ถ้าเป้าหมายหลักคือลดไขมัน ให้ลดพลังงานลงเล็กน้อยโดยคงโปรตีนและแรงต้านไว้'
+      };
+    }
+    return {
+      title: 'รอดูแนวโน้มอีกนิด',
+      note: period + ' การเปลี่ยนแปลงยังไม่ชัด ไขมัน' + summaryChangePhrase(fatDelta, ' kg') + ' กล้ามเนื้อ' + summaryChangePhrase(muscleDelta, ' kg') + '.' + bodyFatText + ' รอดูอีก 2–3 ครั้งในเงื่อนไขเดิมก่อนปรับแผน'
+    };
+  };
+
+  const summaryThaiMonths = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+  const summaryLatestDate = (() => {
+    const parts = String(summaryStore.LATEST_DATE || '').split('-').map(Number);
+    return parts.length === 3 && parts.every(Number.isFinite)
+      ? new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]))
+      : null;
+  })();
+  const summaryFormatShortProjectionDate = (days) => {
+    if (!summaryLatestDate) return '—';
+    const projected = new Date(summaryLatestDate.getTime() + Number(days) * 86400000);
+    return projected.getUTCDate() + ' ' + summaryThaiMonths[projected.getUTCMonth()];
+  };
+  const summaryFormatDuration = (days) => {
+    const number = Number(days);
+    if (!Number.isFinite(number) || number <= 0) return 'ถึงเป้าแล้ว';
+    const totalDays = Math.max(1, Math.round(number));
+    if (totalDays < 60) return totalDays + ' วัน';
+    const years = Math.floor(totalDays / 365);
+    const daysAfterYears = totalDays - years * 365;
+    const months = Math.floor(daysAfterYears / 30);
+    const remainingDays = daysAfterYears - months * 30;
+    return (years ? years + ' ปี' : '')
+      + (months ? (years ? ' ' : '') + months + ' เดือน' : '')
+      + (remainingDays ? (years || months ? ' ' : '') + remainingDays + ' วัน' : '');
+  };
+  const summaryEstimateToTarget = (baseline, current, target, lowerIsBetter, elapsedDays, sampleCount, ratePeriodDays) => {
+    const baselineValue = Number(baseline);
+    const currentValue = Number(current);
+    const targetValue = Number(target);
+    const elapsed = Number(elapsedDays);
+    if (![baselineValue, currentValue, targetValue, elapsed].every(Number.isFinite)) return null;
+    const distance = lowerIsBetter ? currentValue - targetValue : targetValue - currentValue;
+    const periodDays = Number(ratePeriodDays) > 0 ? Number(ratePeriodDays) : 30;
+    const base = {target: targetValue, current: currentValue, lowerIsBetter, ratePeriodDays: periodDays, ratePerDay: null, ratePerWeek: null, ratePerPeriod: null};
+    if (distance <= 0.05) return {...base, kind: 'reached', days: 0, points: []};
+    if (elapsed <= 0) return {...base, kind: 'noRate'};
+    const progress = lowerIsBetter ? baselineValue - currentValue : currentValue - baselineValue;
+    const ratePerDay = (currentValue - baselineValue) / elapsed;
+    const result = {...base, ratePerDay, ratePerWeek: ratePerDay * 7, ratePerPeriod: ratePerDay * periodDays};
+    if (progress <= 0) return {...result, kind: 'wrongWay'};
+    if (Number(sampleCount) < 3 || elapsed < 14) return {...result, kind: 'tooSoon'};
+    if (Math.abs(ratePerDay) <= 0.003) return {...result, kind: 'noRate'};
+    const days = Math.max(1, Math.ceil(distance / Math.abs(ratePerDay)));
+    return {...result, kind: 'estimate', days, horizonDays: Math.min(90, days)};
+  };
+  const summaryProjectionDays = (horizon) => {
+    const maxDay = Math.max(1, Number(horizon));
+    const days = [];
+    for (let day = 1; day <= Math.min(7, maxDay); day += 1) days.push(day);
+    const cadence = maxDay <= 21 ? 7 : 14;
+    for (let day = 14; day < maxDay; day += cadence) days.push(day);
+    if (!days.includes(maxDay)) days.push(maxDay);
+    return days;
+  };
+  const summaryMakeProjectionPoints = (projection) => {
+    if (!projection || projection.kind !== 'estimate') return [];
+    const horizon = Math.max(1, Number(projection.horizonDays));
+    const points = [];
+    for (const day of summaryProjectionDays(horizon)) {
+      if (day === horizon) continue;
+      const rawValue = projection.current + projection.ratePerDay * day;
+      const value = projection.lowerIsBetter
+        ? Math.max(projection.target, rawValue)
+        : Math.min(projection.target, rawValue);
+      points.push({day, label: summaryFormatShortProjectionDate(day), value: +value.toFixed(2)});
+    }
+    const rawValue = projection.current + projection.ratePerDay * horizon;
+    const value = projection.lowerIsBetter
+      ? Math.max(projection.target, rawValue)
+      : Math.min(projection.target, rawValue);
+    points.push({day: horizon, label: summaryFormatShortProjectionDate(horizon), value: +value.toFixed(2)});
+    return points;
+  };
+  const summaryChartPreviewDays = (elapsedDays) => {
+    const elapsed = Number(elapsedDays);
+    return Number.isFinite(elapsed) && elapsed > 0 ? Math.max(1, Math.ceil(elapsed * 0.25)) : 1;
+  };
+  const summaryForecastLabel = (projection) => projection
+    ? (projection.kind === 'reached'
+      ? 'ถึงเป้าแล้ว'
+      : projection.kind === 'unavailable'
+        ? 'รอข้อมูลเพิ่ม'
+        : projection.kind === 'wrongWay'
+          ? (projection.lowerIsBetter ? 'ยังไม่ลดต่อ' : 'รักษากล้ามเนื้อก่อน')
+          : projection.kind === 'tooSoon'
+            ? 'รอข้อมูลเพิ่ม'
+            : projection.kind === 'noRate'
+              ? 'ยังไม่เห็นอัตราชัด'
+              : 'ประมาณ ' + summaryFormatDuration(projection.days))
+    : '—';
+  const summaryForecastRateLabel = (projection) => {
+    if (!projection || !Number.isFinite(projection.ratePerPeriod)) return '';
+    const amount = Math.abs(projection.ratePerPeriod).toFixed(1);
+    const direction = projection.ratePerPeriod < 0 ? 'ลด' : 'เพิ่ม';
+    const prefix = projection.kind === 'estimate' ? direction + 'เฉลี่ย ' : 'ช่วงนี้' + direction + ' ';
+    return prefix + amount + ' kg/30 วัน';
+  };
+
+  const summaryRenderRange = (range) => {
+    const comparisonWindow = summaryFindWindow(range);
+    const hasComparison = Boolean(comparisonWindow && comparisonWindow.available);
+    const baselineIndex = hasComparison ? comparisonWindow.baselineIndex : Math.max(0, summaryData.length - 24);
+    const baseline = hasComparison ? comparisonWindow.baseline : summaryLatest;
+    const chartData = hasComparison ? comparisonWindow.chartData : summaryData.slice(baselineIndex);
+    const label = summaryRangeLabels[range];
+    const fatDelta = hasComparison ? summaryLatest.fat - baseline.fat : null;
+    const muscleDelta = hasComparison ? summaryLatest.muscle - baseline.muscle : null;
+    const weightDelta = hasComparison ? summaryEstimatedWeight(summaryLatest) - summaryEstimatedWeight(baseline) : null;
+    const elapsedDays = hasComparison ? Number(summaryLatest.daysFromStart) - Number(baseline.daysFromStart) : null;
+    const recommendation = summarySevenDayRecommendation();
+    const forecastWindow = summaryFindWindow(30);
+    const muscleForecastWindow = summaryFindWindow('start');
+    const chartPreviewDays = hasComparison ? summaryChartPreviewDays(comparisonWindow.elapsedDays) : 1;
+    const makeForecast = (window, baselineValue, currentValue, targetValue, lowerIsBetter) => {
+      if (!window || !window.available) {
+        return {kind: 'unavailable', lowerIsBetter, availableDays: window ? window.availableDays : 0};
+      }
+      const projection = summaryEstimateToTarget(
+        baselineValue,
+        currentValue,
+        targetValue,
+        lowerIsBetter,
+        window.elapsedDays,
+        window.chartData.length,
+        30
+      );
+      if (projection && projection.kind === 'estimate') {
+        projection.points = summaryMakeProjectionPoints({...projection, horizonDays: Math.min(projection.horizonDays, chartPreviewDays)});
+      }
+      return projection;
+    };
+    const fatProjection = makeForecast(forecastWindow, forecastWindow && forecastWindow.available ? forecastWindow.baseline.fat : summaryStart.fat, summaryLatest.fat, summaryTargetFat, true);
+    const muscleProjection = makeForecast(muscleForecastWindow, muscleForecastWindow && muscleForecastWindow.available ? muscleForecastWindow.baseline.muscle : summaryStart.muscle, summaryLatest.muscle, summaryTargetMuscle, false);
+    const weightBaseline = forecastWindow && forecastWindow.available
+      ? summaryEstimatedWeight(forecastWindow.baseline)
+      : null;
+    const weightProjection = makeForecast(forecastWindow, weightBaseline, summaryEstimatedWeight(summaryLatest), summaryTargetWeight, true);
+
+    summarySet('s-verdict-title', recommendation.title);
+    summarySet('s-verdict-note', recommendation.note);
+    summarySet('s-verdict-action', recommendation.action || 'คงแผนเดิมและติดตามแนวโน้มต่อ');
+    summarySet('s-verdict-encourage', recommendation.encourage || 'ทำต่อแบบสม่ำเสมอ คุณกำลังมาถูกทางครับ');
+    summarySet('s-range-label', label);
+    summarySet('s-weight-key', hasComparison ? 'ช่วงนี้ ' + summarySigned(weightDelta, ' kg') : 'ข้อมูลยังไม่ถึง');
+    summarySet('s-fat-key', hasComparison ? 'ช่วงนี้ ' + summarySigned(fatDelta, ' kg') : 'ข้อมูลยังไม่ถึง');
+    summarySet('s-muscle-key', hasComparison ? 'ช่วงนี้ ' + summarySigned(muscleDelta, ' kg') : 'ข้อมูลยังไม่ถึง');
+    summarySet('s-weight-forecast', summaryForecastLabel(weightProjection));
+    summarySet('s-weight-forecast-rate', summaryForecastRateLabel(weightProjection));
+    summarySet('s-fat-forecast', summaryForecastLabel(fatProjection));
+    summarySet('s-muscle-forecast', summaryForecastLabel(muscleProjection));
+    summarySet('s-fat-forecast-rate', summaryForecastRateLabel(fatProjection));
+    const muscleForecastRate = summaryForecastRateLabel(muscleProjection);
+    summarySet('s-muscle-forecast-rate', muscleForecastRate && muscleForecastWindow && muscleForecastWindow.available
+      ? 'ตั้งแต่เริ่ม · ' + muscleForecastRate
+      : muscleForecastRate);
+    summarySet('s-range-note', hasComparison
+      ? (range === 'start'
+        ? 'เริ่มจาก ' + baseline.date + ' · มีผลวัด ' + chartData.length + ' ครั้ง'
+        : 'ผลล่าสุด ' + summaryLatest.date + ' · เทียบกับผลวัดใกล้เคียง ' + label + ' ก่อนหน้า · ' + baseline.date)
+      : 'มีข้อมูล ' + comparisonWindow.availableDays + ' วัน · ยังไม่ครบ ' + label + ' จึงยังเปรียบเทียบช่วงนี้ไม่ได้');
+    summarySet('s-fat-chart-value', summaryNum(summaryLatest.fat) + ' kg');
+    summarySet('s-muscle-chart-value', summaryNum(summaryLatest.muscle) + ' kg');
+    document.querySelectorAll('.s-range-controls button').forEach(button => {
+      button.setAttribute('aria-pressed', button.dataset.range === String(range) ? 'true' : 'false');
+    });
+    const note = document.getElementById('s-range-note');
+    if (note) {
+      note.classList.remove('is-refreshing');
+      void note.offsetWidth;
+      note.classList.add('is-refreshing');
+    }
+    summaryMakeChart('s-fat-chart', chartData, 'fat', summaryTargetFat, '#ef7c67', 'rgba(239,124,103,.12)', 'kg', fatProjection);
+    summaryMakeChart('s-muscle-chart', chartData, 'muscle', summaryTargetMuscle, '#3b91b0', 'rgba(59,145,176,.12)', 'kg', muscleProjection);
+    summaryRenderDetailComparison(range);
+  };
+
+  document.querySelectorAll('.s-range-controls button').forEach(button => {
+    button.addEventListener('click', () => {
+      if (!button.disabled) summaryRenderRange(button.dataset.range);
+    });
+  });
+  summarySet('s-log-count', summaryData.length + ' ครั้ง');
+  const logContent = document.getElementById('s-log-content');
+  const summaryLogHead = document.getElementById('s-log-head');
+  if (summaryLogHead) {
+    summaryLogHead.innerHTML = summaryLogColumns.map(column => '<th scope="col">' + column.label + '</th>').join('');
+  }
+  const summaryLogRows = summaryData.slice().reverse();
+  const summaryLogPageSize = 10;
+  let summaryLogPage = 1;
+  const summaryLogPageCount = Math.max(1, Math.ceil(summaryLogRows.length / summaryLogPageSize));
+  const summaryRenderLog = () => {
+    const start = (summaryLogPage - 1) * summaryLogPageSize;
+    const rows = summaryLogRows.slice(start, start + summaryLogPageSize);
+    if (logContent) {
+      logContent.innerHTML = rows.map(item =>
+        '<tr>' + summaryLogColumns.map(column => '<td>' + column.render(item) + '</td>').join('') + '</tr>'
+      ).join('');
+    }
+    summarySet('s-log-page', summaryLogPage + ' / ' + summaryLogPageCount);
+    const previousButton = document.getElementById('s-log-prev');
+    const nextButton = document.getElementById('s-log-next');
+    if (previousButton) previousButton.disabled = summaryLogPage <= 1;
+    if (nextButton) nextButton.disabled = summaryLogPage >= summaryLogPageCount;
+  };
+      if (logContent) logContent.addEventListener('click', event => {
+        const button = event.target.closest('[data-log-detail]');
+        if (!button) return;
+        const key = button.getAttribute('data-log-detail');
+        const item = summaryLogRows.find(row => summaryLogDetailKey(row) === key);
+        summaryRenderLogDetail(item);
+      });
+      const logDetail = document.getElementById('s-log-detail');
+      if (logDetail) logDetail.addEventListener('click', event => {
+        if (event.target.closest('[data-log-detail-close]')) summaryCloseLogDetail();
+      });
+      document.addEventListener('keydown', event => {
+        if (event.key === 'Escape') summaryCloseLogDetail();
+      });
+      const previousButton = document.getElementById('s-log-prev');
+  const nextButton = document.getElementById('s-log-next');
+  if (previousButton) previousButton.addEventListener('click', () => {
+    if (summaryLogPage > 1) {
+      summaryLogPage -= 1;
+      summaryRenderLog();
+    }
+  });
+  if (nextButton) nextButton.addEventListener('click', () => {
+    if (summaryLogPage < summaryLogPageCount) {
+      summaryLogPage += 1;
+      summaryRenderLog();
+    }
+  });
+  summaryRenderLog();
+
+  const summaryDetailParts = [
+    {key: 'la', label: 'แขนซ้าย', side: 'right'},
+    {key: 'ra', label: 'แขนขวา', side: 'left'},
+    {key: 'tr', label: 'ลำตัว', side: 'left'},
+    {key: 'll', label: 'ขาซ้าย', side: 'right'},
+    {key: 'rl', label: 'ขาขวา', side: 'left'}
+  ];
+  const summarySegmentStatus = (value) => {
+    const number = Number(value);
+    if (!Number.isFinite(number)) return '—';
+    if (number > 160) return 'สูง';
+    if (number < 80) return 'ต่ำ';
+    return 'ปกติ';
+  };
+  const summaryRenderDetailComparison = (range) => {
+    const rangeKey = String(range);
+    const config = summaryPeriodConfig[rangeKey] || summaryPeriodConfig[1];
+    const window = summaryFindWindow(rangeKey);
+    const baseline = window && window.available ? window.baseline : null;
+    const segmentBaseline = summaryFindBaselineWithFields(rangeKey, ['sf', 'sm']);
+    const segmentBaselineNote = baseline && segmentBaseline && segmentBaseline.date !== baseline.date
+      ? 'รายส่วนเริ่มเทียบจาก ' + segmentBaseline.date
+      : '';
+    summarySet('s-detail-range-label', baseline ? 'เทียบ ' + (rangeKey === 'start' ? 'ตั้งแต่เริ่ม' : config.label) : 'ข้อมูลยังไม่ถึง');
+    summarySet('s-detail-range-note', baseline ? segmentBaselineNote : 'มีข้อมูล ' + (window ? window.availableDays : 0) + ' วัน · ยังไม่ครบ ' + config.label);
+    const container = document.getElementById('s-detail-content');
+    if (!container) return;
+    const summaryInlineDelta = (current, previous, unit, alwaysShow = false) => {
+      const currentValue = Number(current);
+      const previousValue = Number(previous);
+      if (![currentValue, previousValue].every(Number.isFinite)) return '';
+      const delta = currentValue - previousValue;
+      if (Math.abs(delta) < 0.05 && !alwaysShow) return '';
+      return ' <em class="s-inline-delta ' + (delta < 0 ? 'down' : 'up') + '">(' + summarySigned(delta, unit) + ')</em>';
+    };
+    const summaryScanComparison = (current, previous, unit, missingLabel) => {
+      if (!Number.isFinite(Number(current))) return '';
+      if (!Number.isFinite(Number(previous))) {
+        return ' <em class="s-inline-note">(' + missingLabel + ')</em>';
+      }
+      return summaryInlineDelta(current, previous, unit, true);
+    };
+    const scanRow = (label, value) => '<div class="s-detail-row"><span>' + label + '</span><strong>' + value + '</strong></div>';
+    const segmentCallouts = summaryDetailParts.map(part => {
+      const currentFat = Number(summaryLatest.sf && summaryLatest.sf[part.key]);
+      const currentMuscle = Number(summaryLatest.sm && summaryLatest.sm[part.key]);
+      const fatPct = Number(summaryLatest.sfPct && summaryLatest.sfPct[part.key]);
+      const musclePct = Number(summaryLatest.smPct && summaryLatest.smPct[part.key]);
+      const fatStatus = summarySegmentStatus(fatPct);
+      const muscleStatus = summarySegmentStatus(musclePct);
+      const fatDeltaText = summaryScanComparison(currentFat, segmentBaseline && segmentBaseline.sf && segmentBaseline.sf[part.key], ' kg', 'ไม่มีไขมันรายส่วนย้อนหลัง');
+      const muscleDeltaText = summaryScanComparison(currentMuscle, segmentBaseline && segmentBaseline.sm && segmentBaseline.sm[part.key], ' kg', 'ไม่มีกล้ามเนื้อรายส่วนย้อนหลัง');
+      return '<div class="s-segment-callout ' + part.side + ' ' + part.key + '" aria-label="' + part.label + ': ไขมัน ' + summaryNum(currentFat) + ' kg ' + summaryNum(fatPct) + '% ' + fatStatus + ', กล้ามเนื้อ ' + summaryNum(currentMuscle) + ' kg ' + summaryNum(musclePct) + '% ' + muscleStatus + '">' +
+        '<h4>' + part.label + '</h4>' +
+        '<small>ไขมัน ' + summaryNum(currentFat) + ' kg' + fatDeltaText + '</small>' +
+        '<small>กล้ามเนื้อ ' + summaryNum(currentMuscle) + ' kg' + muscleDeltaText + '</small>' +
+      '</div>';
+    }).join('');
+    container.innerHTML =
+      '<article class="s-detail-card"><h3>ข้อมูลจากการสแกน</h3>' +
+        '<div class="s-detail-comparison">' +
+          scanRow('น้ำหนัก', summaryNum(summaryEstimatedWeight(summaryLatest)) + ' kg' + summaryScanComparison(summaryEstimatedWeight(summaryLatest), baseline && summaryEstimatedWeight(baseline), ' kg', 'ไม่มีน้ำหนักย้อนหลัง')) +
+          scanRow('Fat mass', summaryNum(summaryLatest.fat) + ' kg' + summaryScanComparison(summaryLatest.fat, baseline && baseline.fat, ' kg', 'ไม่มีไขมันย้อนหลัง')) +
+          scanRow('Body fat', summaryNum(summaryLatest.bf) + '%' + summaryScanComparison(summaryLatest.bf, baseline && baseline.bf, '%', 'ไม่มีเปอร์เซ็นต์ไขมันย้อนหลัง')) +
+          scanRow('Muscle mass', summaryNum(summaryLatest.muscle) + ' kg' + summaryScanComparison(summaryLatest.muscle, baseline && baseline.muscle, ' kg', 'ไม่มีกล้ามเนื้อย้อนหลัง')) +
+          scanRow('กล้ามเนื้อโครงร่าง', summaryNum(summaryLatest.skeletalMuscle) + ' kg' + summaryScanComparison(summaryLatest.skeletalMuscle, baseline && baseline.skeletalMuscle, ' kg', 'ไม่มีกล้ามเนื้อโครงร่างย้อนหลัง')) +
+          scanRow('น้ำในร่างกาย', summaryNum(summaryLatest.waterWeight) + ' kg' + summaryScanComparison(summaryLatest.waterWeight, baseline && baseline.waterWeight, ' kg', 'ไม่มีค่าน้ำจากสแกนย้อนหลัง')) +
+          scanRow('BMI', summaryNum(summaryLatest.bmi, 1)) +
+          scanRow('ไขมันช่องท้อง', summaryLatest.vis == null ? '—' : summaryLatest.vis + summaryInlineDelta(summaryLatest.vis, baseline && baseline.vis, '')) +
+          scanRow('BMR', Number.isFinite(Number(summaryLatest.bmr)) ? summaryLatest.bmr.toLocaleString('en-US') + ' kcal' : '—') +
+          scanRow('อายุร่างกาย', summaryLatest.bodyAge == null ? '—' : summaryLatest.bodyAge + ' ปี') +
+        '</div>' +
+      '</article>' +
+      '<article class="s-detail-card s-segment-card"><div class="s-segment-card-head"><h3>รายส่วนของร่างกาย</h3><span>FAT · MUSCLE</span></div>' +
+        '<div class="s-body-map"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAA8IAAAZjCAYAAAAzk4xBAABcLWNhQlgAAFwtanVtYgAAAB5qdW1kYzJwYQARABCAAACqADibcQNjMnBhAAAAXAdqdW1iAAAAR2p1bWRjMm1hABEAEIAAAKoAOJtxA3VybjpjMnBhOjhmNmJmMWU4LTFiZmQtNDc0Yi1hNWZmLWMwZjRhYzk0YTljNQAAAAxDanVtYgAAAClqdW1kYzJhcwARABCAAACqADibcQNjMnBhLmFzc2VydGlvbnMAAAAJ0Wp1bWIAAAA7anVtZEDLDDK7ikidpwsq1vR/Q2kTYzJwYS5pY29uAAAAABhjMnNoBLjJTnUoO1C/Ws+IzzxecwAAABdiZmRiAGltYWdlL3N2Zyt4bWwAAAAJd2JpZGI8c3ZnIHdpZHRoPSI3MTYiIGhlaWdodD0iNzE2IiB2aWV3Qm94PSIwIDAgNzE2IDcxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTUwOC43NDkgMzE3LjM5OUM1MTYuNzc3IDI4Ny4zMTQgNTA4Ljk5MSAyNTMuODg0IDQ4NS4zODkgMjMwLjI4MkM0NjEuNzg4IDIwNi42ODEgNDI4LjM2IDE5OC44OTUgMzk4LjI3MyAyMDYuOTIzQzM3Ni4yMzEgMTg0LjkyOCAzNDMuMzkgMTc0Ljk1NiAzMTEuMTQ4IDE4My41OTZDMjc4LjkwNiAxOTIuMjM0IDI1NS40NSAyMTcuMjkyIDI0Ny4zNiAyNDcuMzYxQzIxNy4yOTEgMjU1LjQ1MSAxOTIuMjMzIDI3OC45MSAxODMuNTk1IDMxMS4xNDlDMTc0Ljk1NyAzNDMuMzkxIDE4NC45MjcgMzc2LjIzMiAyMDYuOTI0IDM5OC4yNzRDMTk4Ljg5NiA0MjguMzU5IDIwNi42ODMgNDYxLjc4OSAyMzAuMjg0IDQ4NS4zOTFDMjUzLjg4NSA1MDguOTkyIDI4Ny4zMTMgNTE2Ljc3OSAzMTcuNDAxIDUwOC43NUMzMzkuNDQyIDUzMC43NDUgMzcyLjI4NiA1NDAuNzE3IDQwNC41MjUgNTMyLjA3OUM0MzYuNzY3IDUyMy40NDEgNDYwLjIyMyA0OTguMzg0IDQ2OC4zMTMgNDY4LjMxNUM0OTguMzgzIDQ2MC4yMjQgNTIzLjQ0IDQzNi43NjYgNTMyLjA3OCA0MDQuNTI2QzU0MC43MTYgMzcyLjI4NSA1MzAuNzQ3IDMzOS40NDMgNTA4Ljc0OSAzMTcuNDAyVjMxNy4zOTlaTTQ3MC44OTkgMjQ0Ljc3NkM0ODYuODkyIDI2MC43NyA0OTMuNDg4IDI4Mi42MDEgNDkwLjY4NyAzMDMuNDEyTDQxNS41NzcgMjYwLjA0NkM0MTIuNDExIDI1OC4yMTggNDA4LjUwOSAyNTguMjE4IDQwNS4zNDUgMjYwLjA0NkwzMTcuNDAxIDMxMC44MlYyNzcuNTI2QzMxNy40MDEgMjc1LjE5MSAzMTguNjUyIDI3My4wMDUgMzIwLjY3NiAyNzEuODM3TDM4Ny42NDQgMjMzLjE3NEM0MTQuMTc4IDIxOC4zNTMgNDQ4LjM0NiAyMjIuMjIzIDQ3MC45MDEgMjQ0Ljc3Nkg0NzAuODk5Wk0zNTcuODM3IDMxMS4xNDRMMzk4LjI3NSAzMzQuNDkxVjM4MS4xODVMMzU3LjgzNyA0MDQuNTMyTDMxNy4zOTggMzgxLjE4NVYzMzQuNDkxTDM1Ny44MzcgMzExLjE0NFpNMjY0Ljc3NiAyNjkuNjkzQzI2NS4yMDcgMjM5LjMwNSAyODUuNjQ0IDIxMS42NDkgMzE2LjQ1MyAyMDMuMzkzQzMzOC4zIDE5Ny41NCAzNjAuNTA1IDIwMi43NDQgMzc3LjEyNyAyMTUuNTczTDMwMi4wMTQgMjU4LjkzN0MyOTguODQ4IDI2MC43NjQgMjk2Ljg5OCAyNjQuMTQ0IDI5Ni44OTggMjY3Ljc5OFYzNjkuMzQ2TDI2OC4wNjUgMzUyLjY5OUMyNjYuMDQzIDM1MS41MzEgMjY0Ljc3NiAzNDkuMzUzIDI2NC43NzYgMzQ3LjAxN1YyNjkuNjkxVjI2OS42OTNaTTIwMy4zOTEgMzE2LjQ1NEMyMDkuMjQ0IDI5NC42MDggMjI0Ljg1NCAyNzcuOTc4IDI0NC4yNzYgMjY5Ljk5OVYzNTYuNzNDMjQ0LjI3NiAzNjAuMzg0IDI0Ni4yMjYgMzYzLjc2MyAyNDkuMzkyIDM2NS41OTFMMzM3LjMzNyA0MTYuMzY1TDMwOC41MDMgNDMzLjAxM0MzMDYuNDgxIDQzNC4xODEgMzAzLjk2MSA0MzQuMTg4IDMwMS45MzkgNDMzLjAyTDIzNC45NzEgMzk0LjM1N0MyMDguODY4IDM3OC43ODkgMTk1LjEzOCAzNDcuMjYxIDIwMy4zOTEgMzE2LjQ1NFpNMjQ0Ljc3NSA0NzAuOUMyMjguNzgxIDQ1NC45MDYgMjIyLjE4NiA0MzMuMDc1IDIyNC45ODYgNDEyLjI2NEwzMDAuMDk2IDQ1NS42M0MzMDMuMjYzIDQ1Ny40NTcgMzA3LjE2NCA0NTcuNDU3IDMxMC4zMjggNDU1LjYzTDM5OC4yNzMgNDA0Ljg1NlY0MzguMTQ5QzM5OC4yNzMgNDQwLjQ4NSAzOTcuMDIyIDQ0Mi42NzEgMzk0Ljk5NyA0NDMuODM5TDMyOC4wMjkgNDgyLjUwMkMzMDEuNDk1IDQ5Ny4zMjIgMjY3LjMyNyA0OTMuNDUyIDI0NC43NzIgNDcwLjlIMjQ0Ljc3NVpNNDUwLjg5NyA0NDUuOTgyQzQ1MC40NjYgNDc2LjM3MSA0MzAuMDI5IDUwNC4wMjcgMzk5LjIyIDUxMi4yODNDMzc3LjM3MyA1MTguMTM2IDM1NS4xNjggNTEyLjkzMiAzMzguNTQ3IDUwMC4xMDJMNDEzLjY1OSA0NTYuNzM4QzQxNi44MjYgNDU0LjkxMSA0MTguNzc1IDQ1MS41MzIgNDE4Ljc3NSA0NDcuODc3VjM0Ni4zMjlMNDQ3LjYwOSAzNjIuOTc3QzQ0OS42MzEgMzY0LjE0NSA0NTAuODk3IDM2Ni4zMjMgNDUwLjg5NyAzNjguNjU5VjQ0NS45ODVWNDQ1Ljk4MlpNNTEyLjI4MiAzOTkuMjIxQzUwNi40MjkgNDIxLjA2OCA0OTAuODE5IDQzNy42OTcgNDcxLjM5NyA0NDUuNjc2VjM1OC45NDZDNDcxLjM5NyAzNTUuMjkyIDQ2OS40NDggMzUxLjkxMiA0NjYuMjgxIDM1MC4wODVMMzc4LjMzNiAyOTkuMzExTDQwNy4xNyAyODIuNjYzQzQwOS4xOTIgMjgxLjQ5NSA0MTEuNzEyIDI4MS40ODcgNDEzLjczNCAyODIuNjU1TDQ4MC43MDIgMzIxLjMxOEM1MDYuODA1IDMzNi44ODcgNTIwLjUzNiAzNjguNDE1IDUxMi4yODIgMzk5LjIyMVoiIGZpbGw9ImJsYWNrIi8+Cjwvc3ZnPgoAAAF+anVtYgAAAEFqdW1kY2JvcgARABCAAACqADibcRNjMnBhLmFjdGlvbnMudjIAAAAAGGMyc2h9oFwm1HeShXV5XtfcsC2WAAABNWNib3KhZ2FjdGlvbnODpGZhY3Rpb25sYzJwYS5jcmVhdGVkZHdoZW7AdDIwMjYtMDgtMjFUMDA6MDA6MDBabXNvZnR3YXJlQWdlbnSiZG5hbWVpZ3B0LWltYWdlZ3ZlcnNpb25jMi4wcWRpZ2l0YWxTb3VyY2VUeXBleEZodHRwOi8vY3YuaXB0Yy5vcmcvbmV3c2NvZGVzL2RpZ2l0YWxzb3VyY2V0eXBlL3RyYWluZWRBbGdvcml0aG1pY01lZGlhomZhY3Rpb25uYzJwYS5jb252ZXJ0ZWRkd2hlbsB0MjAyNi0wOC0yMVQwMDowMDowMFqiZmFjdGlvbngYYzJwYS53YXRlcm1hcmtlZC51bmJvdW5kZHdoZW7AdDIwMjYtMDgtMjFUMDA6MDA6MDBaAAAAw2p1bWIAAABAanVtZGNib3IAEQAQgAAAqgA4m3ETYzJwYS5oYXNoLmRhdGEAAAAAGGMyc2g2YN9XeKGc8Gxv1mjzBH0XAAAAe2Nib3KlamV4Y2x1c2lvbnOBomVzdGFydBghZmxlbmd0aBlcOWRuYW1lbmp1bWJmIG1hbmlmZXN0Y2FsZ2ZzaGEyNTZkaGFzaFggMHWk9+vEUIum4xZX50yEtZoTW7k7iMvqd7GGnwlag1NjcGFkSAAAAAAAAAAAAAACump1bWIAAAAnanVtZGMyY2wAEQAQgAAAqgA4m3EDYzJwYS5jbGFpbS52MgAAAAKLY2JvcqZqaW5zdGFuY2VJRHgseG1wOmlpZDo4YjMxODNjZS00MTQ3LTQ2NjItYjA5Mi03OTczNGRmMzBiZjF0Y2xhaW1fZ2VuZXJhdG9yX2luZm+kZG5hbWV4GE9wZW5BSSBNZWRpYSBTZXJ2aWNlIEFQSWRpY29uomN1cmx4JHNlbGYjanVtYmY9YzJwYS5hc3NlcnRpb25zL2MycGEuaWNvbmRoYXNoWCDvYM0z4NYfddhWtX3DuFn5hjPHXusB8pw6ZlUWWQfr+WtzcGVjVmVyc2lvbmUyLjIuMHdvcmcuY29udGVudGF1dGguYzJwYV9yc2YwLjc5LjJp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

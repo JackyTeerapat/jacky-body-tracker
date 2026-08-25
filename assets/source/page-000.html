@@ -1,0 +1,1176 @@
+<!-- ============================================================
+  JACKY BODY TRACKER v7
+  ✅ แก้ได้อย่างเดียว: เพิ่ม 1 บรรทัดใน DATA ด้านล่าง
+  ❌ ห้ามแก้: ทุกอย่างนอกจาก DATA, TARGET, TOTAL_DAYS
+============================================================ -->
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jacky Body Tracker</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #111; color: #f0f0f0; padding: 2rem; }
+
+  #app { max-width: 520px; margin: 0 auto; }
+  .card { background: #1a1a1a; border-radius: 12px; padding: 12px; margin-bottom: 10px; }
+  .grid2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 1rem; }
+  .cl { font-size: 11px; color: #888; margin-bottom: 4px; }
+  .cv { font-size: 22px; font-weight: 500; }
+  .cd { font-size: 12px; margin-top: 2px; }
+  .g { color: #1D9E75; } .r { color: #E24B4A; } .gr { color: #888; }
+  .sec { font-size: 11px; color: #555; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 12px; }
+  .mb { margin-bottom: 1rem; }
+  table { width: 100%; font-size: 11px; border-collapse: collapse; }
+  th { color: #555; text-align: left; padding: 5px 6px; border-bottom: 0.5px solid #333; white-space: nowrap; }
+  td { padding: 5px 6px; border-bottom: 0.5px solid #222; white-space: nowrap; }
+  .legend { display: flex; gap: 12px; margin-bottom: 6px; flex-wrap: wrap; }
+  .li { display: flex; align-items: center; gap: 4px; font-size: 11px; color: #888; }
+  .ld { width: 12px; height: 3px; border-radius: 2px; display: inline-block; }
+  /* Mobile-first reading layer. The original tracker stays as the data source. */
+  :root {
+    --ink: #182326;
+    --muted: #718084;
+    --line: #dce5e3;
+    --paper: #f5f8f7;
+    --surface: #ffffff;
+    --teal: #2bb9b3;
+    --teal-deep: #147d7a;
+    --teal-soft: #e2f5f3;
+    --coral: #ef7c67;
+    --coral-soft: #fff0eb;
+    --amber: #e6a944;
+    --shadow: 0 18px 42px rgba(31, 69, 68, .08);
+  }
+
+  html { background: var(--paper); }
+  body {
+    padding: 0 !important;
+    overflow-x: hidden;
+    background: var(--paper) !important;
+    color: var(--ink) !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Noto Sans Thai", "Segoe UI", sans-serif;
+  }
+  #app { display: none !important; }
+  .mobile-shell { min-height: 100vh; padding: 18px 16px 54px; }
+  .mobile-wrap { width: min(100%, 1080px); margin: 0 auto; }
+  .m-topbar { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+  .m-eyebrow { margin: 0 0 5px; color: var(--teal-deep); font-size: 10px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
+  .m-topbar h1 { margin: 0; color: var(--ink); font-size: clamp(26px, 8vw, 40px); line-height: .98; letter-spacing: -.055em; }
+  .m-stamp { margin: 8px 0 0; color: var(--muted); font-size: 12px; }
+  .m-score { flex: 0 0 auto; min-width: 78px; padding: 10px 10px 9px; border: 1px solid #bce6e2; border-radius: 18px; background: var(--teal-soft); text-align: center; }
+  .m-score span, .m-score small { display: block; color: var(--teal-deep); font-size: 10px; font-weight: 700; }
+  .m-score strong { display: inline-block; margin: 1px 0 0; color: var(--teal-deep); font-size: 34px; line-height: 1; letter-spacing: -.06em; }
+  .m-score small { display: inline; margin-left: 2px; font-size: 11px; }
+  .m-hero { position: relative; overflow: hidden; margin-bottom: 12px; padding: 20px; border-radius: 26px; background: var(--ink); color: #fff; box-shadow: var(--shadow); }
+  .m-hero::before { position: absolute; top: 0; right: 0; width: 46%; height: 100%; background: linear-gradient(120deg, transparent, rgba(43,185,179,.26)); content: ""; pointer-events: none; }
+  .m-hero::after { position: absolute; top: 18px; right: 20px; width: 7px; height: 76px; border-radius: 7px; background: var(--teal); content: ""; opacity: .9; }
+  .m-kicker { position: relative; margin-bottom: 16px; color: #8edbd6; font-size: 10px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
+  .m-hero-main { position: relative; display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; }
+  .m-weight { color: #fff; font-size: clamp(46px, 15vw, 72px); font-weight: 750; line-height: .9; letter-spacing: -.075em; }
+  .m-weight span { color: #9aaeb0; font-size: 17px; font-weight: 600; letter-spacing: -.02em; }
+  .m-hero-label { margin: 8px 0 0; color: #a9b8b9; font-size: 12px; }
+  .m-target { position: relative; min-width: 118px; padding: 11px 12px; border: 1px solid rgba(255,255,255,.13); border-radius: 15px; background: rgba(255,255,255,.07); }
+  .m-target span, .m-target small { display: block; color: #9eafb0; font-size: 10px; }
+  .m-target strong { display: block; margin: 3px 0; color: #fff; font-size: 19px; }
+  .m-target small { color: #8edbd6; font-size: 11px; }
+  .m-progress { position: relative; height: 8px; margin: 22px 0 9px; overflow: hidden; border-radius: 999px; background: rgba(255,255,255,.13); }
+  .m-progress > i { display: block; width: var(--progress); height: 100%; border-radius: inherit; background: var(--teal); }
+  .m-hero-foot { position: relative; display: flex; justify-content: space-between; gap: 12px; color: #a9b8b9; font-size: 11px; }
+  .m-good { color: #8edbd6; }
+  .m-section { margin-top: 24px; }
+  .m-section-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin: 0 2px 10px; }
+  .m-section-head h2 { margin: 0; color: var(--ink); font-size: 19px; letter-spacing: -.04em; }
+  .m-section-note { margin: 4px 0 0; color: var(--muted); font-size: 11px; }
+  .m-pill { flex: 0 0 auto; padding: 6px 9px; border-radius: 999px; background: var(--teal-soft); color: var(--teal-deep); font-size: 10px; font-weight: 800; }
+  .m-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+  .m-metric { min-height: 118px; padding: 14px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); box-shadow: 0 8px 24px rgba(31,69,68,.04); }
+  .m-metric:nth-child(3) { grid-column: 1 / -1; min-height: 98px; }
+  .m-metric-label { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 11px; }
+  .m-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--teal); }
+  .m-dot.coral { background: var(--coral); }
+  .m-dot.amber { background: var(--amber); }
+  .m-metric-value { margin-top: 13px; color: var(--ink); font-size: 28px; font-weight: 750; line-height: 1; letter-spacing: -.06em; }
+  .m-metric-value span { color: var(--muted); font-size: 13px; font-weight: 600; letter-spacing: -.02em; }
+  .m-metric-foot { margin-top: 7px; color: var(--muted); font-size: 11px; }
+  .m-metric-foot.good { color: var(--teal-deep); }
+  .m-chart-card { padding: 13px 12px 10px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); }
+  .m-chart-title { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 4px; color: var(--ink); font-size: 12px; font-weight: 750; }
+  .m-chart-title span { color: var(--muted); font-size: 10px; font-weight: 500; }
+  .m-chart { position: relative; height: 168px; }
+  .m-chart + .m-chart-title { margin-top: 18px; }
+  .m-report-grid { display: grid; gap: 10px; }
+  .m-report-card { padding: 15px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); }
+  .m-report-card h3 { margin: 0 0 11px; color: var(--ink); font-size: 13px; }
+  .m-data-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid #edf1f0; }
+  .m-data-row:last-child { border-bottom: 0; padding-bottom: 0; }
+  .m-data-row:first-of-type { padding-top: 0; }
+  .m-data-row span { color: var(--muted); font-size: 11px; }
+  .m-data-row strong { color: var(--ink); font-size: 13px; text-align: right; }
+  .m-data-row em { color: var(--teal-deep); font-size: 10px; font-style: normal; }
+  .m-indicator-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .m-indicator { padding: 12px; border-radius: 14px; background: #f2f7f6; }
+  .m-indicator span { display: block; color: var(--muted); font-size: 10px; }
+  .m-indicator strong { display: block; margin-top: 5px; color: var(--ink); font-size: 18px; letter-spacing: -.04em; }
+  .m-segment-grid { display: grid; gap: 8px; }
+  .m-segment { padding: 13px 14px; border: 1px solid var(--line); border-radius: 17px; background: var(--surface); }
+  .m-segment-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+  .m-segment-top strong { font-size: 13px; }
+  .m-segment-top span { color: var(--coral); font-size: 10px; font-weight: 700; }
+  .m-segment-lines { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+  .m-segment-line { padding: 9px 10px; border-radius: 12px; background: var(--coral-soft); }
+  .m-segment-line.muscle { background: #edf7fb; }
+  .m-segment-line small { display: block; color: var(--muted); font-size: 9px; }
+  .m-segment-line b { display: block; margin-top: 3px; color: var(--ink); font-size: 18px; letter-spacing: -.05em; }
+  .m-segment-line b span { color: var(--muted); font-size: 10px; letter-spacing: 0; }
+  .m-segment-line em { display: block; margin-top: 3px; color: var(--muted); font-size: 10px; font-style: normal; }
+  .m-history { overflow: hidden; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); }
+  .m-history-row { display: grid; grid-template-columns: 1.15fr .9fr .9fr .9fr; gap: 6px; align-items: center; padding: 11px 13px; border-bottom: 1px solid #edf1f0; font-size: 11px; }
+  .m-history-row:last-child { border-bottom: 0; }
+  .m-history-row.header { color: var(--muted); background: #f2f7f6; font-size: 9px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+  .m-history-row strong { color: var(--ink); font-size: 12px; }
+  .m-history-row span { color: var(--muted); text-align: right; }
+  .m-history-row .down { color: var(--teal-deep); }
+  .m-footnote { margin: 22px 3px 0; color: #8b9899; font-size: 10px; line-height: 1.6; }
+  .m-disclaimer { display: inline-block; margin-top: 8px; padding: 5px 8px; border-radius: 7px; background: #fff5df; color: #916c28; }
+  details.m-details { margin-top: 10px; }
+  details.m-details summary { cursor: pointer; color: var(--teal-deep); font-size: 11px; font-weight: 700; }
+  @media (min-width: 720px) {
+    .mobile-shell { padding: 34px 28px 72px; }
+    .m-topbar { margin-bottom: 24px; }
+    .m-dashboard { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(320px, .8fr); gap: 14px; align-items: start; }
+    .m-dashboard > .m-main-column { min-width: 0; }
+    .m-dashboard > .m-side-column { min-width: 0; }
+    .m-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .m-metric:nth-child(3) { grid-column: auto; }
+    .m-report-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .m-segment-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .m-hero, .m-metric, .m-report-card, .m-segment { animation: m-rise .45s ease both; }
+    .m-metric:nth-child(2) { animation-delay: 55ms; }
+    .m-metric:nth-child(3) { animation-delay: 100ms; }
+    @keyframes m-rise { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: translateY(0); } }
+  }
+
+  /* Summary-first refresh: one selected period drives the comparison view. */
+  #mobile-app { display: none !important; }
+  #summary-app { width: 100%; max-width: 100vw; overflow-x: hidden; }
+  .summary-shell { min-height: 100vh; padding: 16px 16px 48px; background: #f4f8f6; color: #172426; }
+  .summary-wrap { width: 100%; max-width: 760px; margin: 0 auto; }
+  .s-header { display: flex; min-width: 0; align-items: flex-start; justify-content: space-between; gap: 14px; margin-bottom: 18px; }
+  .s-eyebrow { margin: 0 0 9px; color: #177b78; font-size: 10px; font-weight: 800; line-height: 1.2; letter-spacing: .12em; text-transform: uppercase; }
+  .s-header h1 { margin: 0; color: #172426; font-size: clamp(30px, 9vw, 44px); line-height: 1.08; letter-spacing: -.065em; }
+  .s-date { margin: 10px 0 0; color: #758487; font-size: 12px; }
+  .s-score { flex: 0 0 auto; min-width: 76px; padding: 10px 9px 8px; border-radius: 17px; background: #dff4f1; text-align: center; }
+  .s-score small { display: block; color: #177b78; font-size: 9px; font-weight: 800; letter-spacing: .08em; }
+  .s-score strong { color: #126f6d; font-size: 34px; line-height: 1; letter-spacing: -.08em; }
+  .s-score span { color: #177b78; font-size: 11px; }
+  .s-verdict { position: relative; overflow: hidden; margin-bottom: 11px; padding: 20px; border-radius: 24px; background: #172426; color: #fff; box-shadow: 0 16px 34px rgba(23,36,38,.14); }
+  .s-verdict::before, .s-verdict::after { display: none; }
+  .s-verdict-label { position: relative; margin: 0 0 10px 3px; color: #8edbd6; font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+  .s-verdict h2 { position: relative; max-width: 82%; margin: 0; color: #fff; font-size: clamp(25px, 7vw, 36px); line-height: 1.05; letter-spacing: -.06em; }
+  .s-verdict p { position: relative; max-width: 90%; margin: 10px 0 0 3px; color: #b1c0c0; font-size: 12px; line-height: 1.5; }
+  .s-verdict-action { margin-top: 13px !important; padding: 10px 11px; border-radius: 12px; background: #eef8f6; color: #176e6a !important; font-weight: 700; }
+  .s-verdict-encourage { margin-top: 11px !important; color: #177b78 !important; font-weight: 800; }
+  .s-chart-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 0 3px; }
+  .s-chart-head h3 { margin: 0; color: #172426; font-size: 13px; }
+  .s-chart-head span { color: #758487; font-size: 10px; }
+  .s-chart { position: relative; height: 145px; margin-top: 7px; }
+  .s-details { margin-top: 14px; padding: 14px 2px 0; border-top: 1px solid #dbe7e4; }
+  .s-details-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; }
+  .s-details-head h3 { margin: 0; color: var(--ink); font-size: 16px; letter-spacing: -.04em; }
+  .s-details-head > span { flex: 0 0 auto; color: var(--teal-deep); font-size: 10px; font-weight: 800; }
+  .s-detail-comparison { margin-top: 12px; border-top: 1px solid #dfe9e6; }
+  .s-detail-compare-row { display: grid; grid-template-columns: minmax(74px, 1fr) auto minmax(124px, auto); align-items: center; gap: 10px; padding: 10px 0; }
+  .s-detail-compare-row + .s-detail-compare-row { border-top: 1px solid #edf2f0; }
+  .s-detail-compare-label { color: var(--muted); font-size: 11px; }
+  .s-detail-compare-current { color: var(--ink); font-size: 12px; font-weight: 800; text-align: right; }
+  .s-detail-compare-current small { display: block; margin-top: 2px; color: var(--muted); font-size: 9px; font-weight: 500; }
+  .s-detail-compare-change { font-size: 11px; font-weight: 800; text-align: right; }
+  .s-detail-compare-change.down { color: var(--teal-deep); }
+  .s-detail-compare-change.up { color: var(--coral); }
+  .s-detail-compare-change.steady { color: var(--muted); }
+  .s-detail-range-note { margin: 7px 0 0; color: var(--muted); font-size: 10px; line-height: 1.35; }
+  #s-detail-content { margin-top: 11px; }
+  .s-detail-card { margin-bottom: 9px; padding: 14px; border: 1px solid #dbe7e4; border-radius: 17px; background: #fff; }
+  .s-detail-card h3 { margin: 0 0 10px; color: #172426; font-size: 13px; }
+  .s-detail-row { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid #edf2f0; font-size: 11px; }
+  .s-detail-row:last-child { border-bottom: 0; padding-bottom: 0; }
+  .s-detail-row span { color: #758487; }
+  .s-detail-row strong { color: #172426; text-align: right; }
+  .s-detail-row strong em { margin-left: 4px; color: var(--teal-deep); font-size: 10px; font-style: normal; font-weight: 700; white-space: nowrap; }
+  .s-detail-row strong em.up { color: var(--coral); }
+  .s-detail-row strong em.s-inline-note { color: var(--muted); font-weight: 600; }
+  .s-segment-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+  .s-segment-item { padding: 10px; border-radius: 12px; background: #f0f7f5; }
+  .s-segment-item span { display: block; color: #758487; font-size: 10px; }
+  .s-segment-values { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 7px; }
+  .s-segment-values > div { min-width: 0; }
+  .s-segment-values small { display: block; margin: 0; color: #758487; font-size: 9px; }
+  .s-segment-values strong { display: block; margin-top: 3px; color: #172426; font-size: 13px; line-height: 1.1; }
+  .s-segment-values em { display: block; margin-top: 3px; color: var(--muted); font-size: 9px; font-style: normal; line-height: 1.2; }
+  .s-segment-values em.down { color: var(--teal-deep); }
+  .s-segment-values em.up { color: var(--coral); }
+  .s-detail-range-label { padding: 4px 7px; border: 1px solid #bce6e2; border-radius: 999px; background: var(--teal-soft); }
+  .s-segment-card-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; }
+  .s-segment-card-head h3 { margin-bottom: 0; }
+  .s-segment-card-head span { color: var(--muted); font-size: 9px; font-weight: 800; letter-spacing: .08em; }
+  .s-body-map { --map-figure-width: 220px; --map-figure-height: 350px; --map-connector: 220px; position: relative; min-height: 382px; margin-top: 9px; overflow: hidden; border-radius: 15px; background: radial-gradient(circle at 50% 35%, #ffffff 0, #f5faf8 64%, #edf5f2 100%); }
+  .s-body-map::before { position: absolute; inset: 12px; border: 1px dashed #dbe8e4; border-radius: 12px; content: ""; pointer-events: none; }
+  .s-body-map img { position: absolute; z-index: 1; top: 14px; left: 50%; width: var(--map-figure-width); height: var(--map-figure-height); object-fit: contain; transform: translateX(-50%); }
+  .s-segment-callout { --pointer-y: 50%; position: absolute; z-index: 2; width: 128px; padding: 9px 10px; border: 1px solid #d5e3df; border-radius: 12px; background: rgba(255,255,255,.95); box-shadow: 0 5px 14px rgba(31,69,68,.07); }
+  .s-segment-callout::after { position: absolute; top: var(--pointer-y); width: var(--map-connector); border-top: 1px solid #8fc1b9; content: ""; transform: translateY(-50%); }
+  .s-segment-callout::before { position: absolute; top: var(--pointer-y); width: 6px; height: 6px; border: 1px solid #fff; border-radius: 50%; background: #6eada6; content: ""; transform: translateY(-50%); }
+  .s-segment-callout.left::after { right: calc(-1 * var(--map-connector)); }
+  .s-segment-callout.right::after { left: calc(-1 * var(--map-connector)); }
+  .s-segment-callout.left::before { right: calc(-1 * var(--map-connector) - 3px); }
+  .s-segment-callout.right::before { left: calc(-1 * var(--map-connector) - 3px); }
+  .s-segment-callout h4 { margin: 0 0 4px; color: var(--ink); font-size: 10px; line-height: 1.1; }
+  .s-segment-callout small { display: block; color: var(--muted); font-size: 9px; line-height: 1.35; white-space: nowrap; }
+  .s-segment-callout small:first-of-type { color: #c26453; }
+  .s-segment-callout small:nth-of-type(2) { color: #317d9a; }
+  .s-segment-callout small em { margin-left: 2px; color: inherit; font-style: normal; }
+  .s-segment-callout.la, .s-segment-callout.ra { --pointer-y: 88%; --map-connector: 172px; }
+  .s-segment-callout.tr { --pointer-y: 88%; --map-connector: 190px; }
+  .s-segment-callout.ll, .s-segment-callout.rl { --pointer-y: 42%; --map-connector: 180px; }
+  .s-segment-callout.la { top: 63px; right: 10px; }
+  .s-segment-callout.ra { top: 63px; left: 10px; }
+  .s-segment-callout.tr { top: 123px; left: 10px; }
+  .s-segment-callout.ll { top: 178px; right: 10px; }
+  .s-segment-callout.rl { top: 178px; left: 10px; }
+  .s-footer { margin: 22px 2px 0; color: #8a9899; font-size: 10px; line-height: 1.6; }
+  @media (min-width: 680px) {
+    .summary-shell { padding: 34px 28px 64px; }
+    .summary-wrap { width: min(100%, 760px); }
+    .s-header { margin-bottom: 22px; }
+    .s-verdict { padding: 24px; }
+    .s-key strong { font-size: 29px; }
+    .s-chart { height: 190px; }
+  }
+
+  /* Summary controls and goals: make the comparison useful without adding another report wall. */
+  .s-header-copy { min-width: 0; flex: 1 1 auto; padding-top: 2px; }
+  .s-header .s-eyebrow { margin-bottom: 10px; line-height: 1.2; }
+  .s-header h1 { line-height: 1.08; }
+  .s-eyebrow { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .s-verdict { min-width: 0; border: 1px solid #d8e4e1; background: #fff; color: var(--ink); box-shadow: 0 14px 30px rgba(31,69,68,.07); }
+  .s-verdict::before { display: none; }
+  .s-verdict::after { display: none; }
+  .s-verdict-label { color: var(--teal-deep); }
+  .s-verdict h2 { display: block; width: 100%; max-width: none; color: var(--ink); overflow-wrap: anywhere; white-space: normal; word-break: break-all; }
+  .s-verdict p { display: block; width: 100%; max-width: 100%; color: var(--muted); overflow-wrap: anywhere; white-space: normal; word-break: break-word; }
+  .s-section-kicker { margin: 0 0 3px; color: var(--teal-deep); font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+  .s-trend-card { min-width: 0; margin-bottom: 11px; padding: 15px 12px 12px; border: 1px solid #d8e4e1; border-radius: 19px; background: #fff; }
+  .s-trend-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; padding: 0 3px; }
+  .s-trend-head h3 { margin: 0; color: var(--ink); font-size: 16px; letter-spacing: -.04em; }
+  .s-trend-head > span { flex: 0 0 auto; color: var(--teal-deep); font-size: 10px; font-weight: 800; }
+  .s-period-selector { margin: 0 3px 13px; padding-bottom: 11px; border-bottom: 1px solid #edf2f0; }
+  .s-period-selector > span { display: block; margin-bottom: 7px; color: var(--muted); font-size: 11px; }
+  .s-range-controls { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+  .s-range-controls::-webkit-scrollbar { display: none; }
+  .s-range-controls button { flex: 0 0 auto; white-space: nowrap; }
+  .s-range-controls { display: flex; min-width: 0; max-width: 100%; gap: 5px; }
+  .s-range-controls button { min-width: 0; min-height: 30px; padding: 5px 9px; border: 1px solid #d8e4e1; border-radius: 999px; background: #fff; color: var(--muted); cursor: pointer; font: inherit; font-size: 11px; font-weight: 750; transition: background .18s ease, border-color .18s ease, color .18s ease, transform .18s ease; }
+  .s-range-controls button:hover { border-color: #9dd7d2; color: var(--teal-deep); }
+  .s-range-controls button:active { transform: scale(.96); }
+  .s-range-controls button[aria-pressed="true"] { border-color: var(--teal); background: var(--teal-soft); color: var(--teal-deep); }
+  .s-range-controls button:disabled,
+  .s-range-controls button[aria-disabled="true"] { border-color: #e2eae8; background: #f4f7f6; color: #a2aeac; cursor: not-allowed; opacity: .72; }
+  .s-range-controls button:disabled:hover,
+  .s-range-controls button[aria-disabled="true"]:hover { border-color: #e2eae8; color: #a2aeac; }
+  .s-range-controls button:focus-visible { outline: 3px solid rgba(43,185,179,.25); outline-offset: 2px; }
+  .s-range-note { margin: 10px 3px 0; color: var(--muted); font-size: 11px; overflow-wrap: anywhere; }
+  .s-range-note.is-refreshing { animation: s-note-pulse .28s ease; }
+  @keyframes s-note-pulse { 50% { color: var(--teal-deep); transform: translateX(3px); } }
+  .s-chart-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 9px; margin-top: 10px; }
+  .s-mini-chart { min-width: 0; padding: 10px 8px 5px; border: 1px solid #f0d9d2; border-radius: 15px; background: #fffaf8; }
+  .s-mini-chart.blue { border-color: #d8e7ee; background: #f9fcfd; }
+  .s-mini-chart .s-chart-head { padding: 0 3px; }
+  .s-mini-chart .s-chart-head h4 { color: var(--ink); font-size: 12px; }
+  .s-mini-chart .s-chart-head span { color: var(--coral); font-size: 10px; font-weight: 800; }
+  .s-mini-chart.blue .s-chart-head span { color: #317d9a; }
+  .s-mini-chart .s-chart { height: 145px; margin-top: 3px; }
+  .s-history { margin-top: 14px; border-top: 1px solid #d8e4e1; }
+  .s-history summary { list-style: none; }
+  .s-history summary::-webkit-details-marker { display: none; }
+  .s-history summary::before { display: inline-block; flex: 0 0 auto; margin-right: 7px; color: var(--teal); content: "▸"; transition: transform .18s ease; }
+  .s-history[open] summary::before { transform: rotate(90deg); }
+  .s-history summary { display: flex; align-items: center; justify-content: flex-start; gap: 10px; cursor: pointer; padding: 14px 2px; color: var(--teal-deep); font-size: 12px; font-weight: 800; }
+  .s-history summary strong { color: var(--muted); font-size: 10px; font-weight: 600; }
+  .s-history summary strong { margin-left: auto; }
+  .s-history-note { margin: 0 2px 9px; color: var(--muted); font-size: 10px; }
+  .s-table-wrap { overflow-x: auto; margin: 0 2px; padding: 4px 6px; border: 1px solid #dfe9e6; border-radius: 14px; background: #fff; -webkit-overflow-scrolling: touch; }
+  .s-log-table { width: 100%; min-width: 3200px; border-collapse: collapse; color: var(--ink); font-size: 10px; font-variant-numeric: tabular-nums; }
+  .s-log-table th { padding: 9px 8px; background: #f4f8f6; color: var(--muted); font-size: 9px; font-weight: 800; text-align: left; white-space: nowrap; }
+  .s-log-table th:not(:first-child), .s-log-table td:not(:first-child) { text-align: right; }
+  .s-log-table td { padding: 9px 8px; border-top: 1px solid #edf2f0; white-space: nowrap; }
+  .s-log-table th:first-child, .s-log-table td:first-child { position: sticky; left: 0; z-index: 2; background: #fff; }
+  .s-log-table th:first-child { z-index: 3; background: #f4f8f6; }
+  .s-log-table td:first-child { color: var(--ink); font-weight: 750; }
+  .s-log-pagination { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 10px 2px 0; }
+  .s-log-pagination button { min-height: 30px; padding: 5px 11px; border: 1px solid #d8e4e1; border-radius: 999px; background: #fff; color: var(--teal-deep); cursor: pointer; font: inherit; font-size: 10px; font-weight: 750; }
+  .s-log-pagination button:hover:not(:disabled) { border-color: #9dd7d2; background: var(--teal-soft); }
+  .s-log-pagination button:disabled { cursor: not-allowed; opacity: .42; }
+  .s-log-page { color: var(--muted); font-size: 10px; font-variant-numeric: tabular-nums; }
+  .s-log-detail { margin: 12px 2px 0; padding: 13px; border: 1px solid #d8e4e1; border-radius: 14px; background: #f7fbfa; color: var(--ink); }
+  .s-log-detail[hidden] { display: none; }
+  .s-log-detail-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+  .s-log-detail-title { margin: 0; color: var(--teal-deep); font-size: 13px; font-weight: 850; }
+  .s-log-detail-meta { margin: 3px 0 0; color: var(--muted); font-size: 10px; line-height: 1.55; }
+  .s-log-detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .s-log-detail-card { min-width: 0; padding: 10px; border: 1px solid #e2ece9; border-radius: 11px; background: #fff; }
+  .s-log-detail-card-wide { grid-column: 1 / -1; }
+  .s-log-detail-card h4 { margin: 0 0 7px; color: var(--teal-deep); font-size: 11px; }
+  .s-log-detail-row { display: flex; justify-content: space-between; gap: 10px; padding: 4px 0; border-top: 1px solid #edf2f0; font-size: 10px; line-height: 1.4; }
+  .s-log-detail-row:first-child { border-top: 0; }
+  .s-log-detail-row span:last-child { color: var(--ink); font-weight: 750; text-align: right; }
+  .s-log-detail-table { width: 100%; border-collapse: collapse; font-size: 10px; font-variant-numeric: tabular-nums; }
+  .s-log-detail-table th, .s-log-detail-table td { padding: 5px 6px; border-top: 1px solid #edf2f0; text-align: right; white-space: nowrap; }
+  .s-log-detail-table th:first-child, .s-log-detail-table td:first-child { text-align: left; }
+  .s-log-detail-table th { color: var(--muted); font-size: 9px; }
+  .s-log-detail-close { flex: 0 0 auto; min-height: 25px; padding: 3px 8px; border: 1px solid #9dd7d2; border-radius: 999px; background: #fff; color: var(--teal-deep); cursor: pointer; font: inherit; font-size: 9px; font-weight: 800; }
+  .s-log-detail-close:hover { background: var(--teal-soft); }
+  .s-log-detail-button { min-height: 25px; padding: 3px 8px; border: 1px solid #9dd7d2; border-radius: 999px; background: var(--teal-soft); color: var(--teal-deep); cursor: pointer; font: inherit; font-size: 9px; font-weight: 800; }
+  .s-log-detail-button:hover { background: #d7f1ee; }
+  .s-log-detail-missing { color: var(--muted); font-size: 9px; }
+  @media (max-width: 620px) { .s-log-detail-grid { grid-template-columns: 1fr; } .s-log-detail-card-wide { grid-column: auto; } }
+  .s-footer { padding-top: 14px; border-top: 1px solid #d8e4e1; }
+  @media (min-width: 680px) {
+    .s-chart-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .s-mini-chart .s-chart { height: 175px; }
+  }
+  @media (max-width: 390px) {
+    .s-range-controls { width: 100%; }
+    .s-range-controls button { flex: 1 1 0; padding-left: 5px; padding-right: 5px; }
+  }
+
+  /* Combined metric + goal cards: one glance answers now, target, and distance. */
+  .s-metric-goal-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 11px; }
+  .s-metric-goal { min-width: 0; padding: 13px 11px 11px; border: 1px solid #d8e4e1; border-radius: 17px; background: #fff; box-shadow: 0 8px 24px rgba(31,69,68,.04); }
+  .s-metric-goal.coral { border-color: #f2d9d1; background: #fffaf8; }
+  .s-metric-goal.blue { border-color: #d8e7ee; background: #f9fcfd; }
+  .s-metric-goal-top { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; min-width: 0; }
+  .s-metric-goal-top > span { color: var(--muted); font-size: 10px; }
+  .s-metric-goal-top > em { min-width: 0; max-width: 72%; overflow: hidden; color: var(--teal-deep); font-size: 9px; font-style: normal; line-height: 1.2; text-align: right; text-overflow: ellipsis; white-space: nowrap; }
+  .s-metric-goal.coral .s-metric-goal-top > em { color: #c26453; }
+  .s-metric-goal.blue .s-metric-goal-top > em { color: #317d9a; }
+  .s-metric-goal-values { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 6px; margin-top: 12px; }
+  .s-metric-goal-values small { display: block; color: var(--muted); font-size: 9px; }
+  .s-metric-goal-values strong { display: block; margin-top: 4px; color: var(--ink); font-size: clamp(21px, 6vw, 28px); line-height: 1; letter-spacing: -.07em; white-space: nowrap; }
+  .s-metric-goal-values strong i { color: var(--muted); font-size: 9px; font-style: normal; letter-spacing: 0; }
+  .s-goal-value { min-width: 0; text-align: right; }
+  .s-goal-value strong { color: var(--teal-deep); font-size: clamp(16px, 4.3vw, 20px); }
+  .s-metric-goal.coral .s-goal-value strong { color: #c26453; }
+  .s-metric-goal.blue .s-goal-value strong { color: #317d9a; }
+  .s-metric-goal .s-goal-bar { height: 7px; margin: 13px 0 8px; overflow: hidden; border-radius: 999px; background: #e5eeeb; }
+  .s-metric-goal .s-goal-bar i { display: block; width: var(--fill, 0%); height: 100%; border-radius: inherit; background: var(--teal); transition: width .45s cubic-bezier(.2,.8,.2,1); }
+  .s-metric-goal.coral .s-goal-bar i { background: var(--coral); }
+  .s-metric-goal.blue .s-goal-bar i { background: #3b91b0; }
+  .s-goal-forecast { min-height: 31px; margin-top: 9px; padding-top: 8px; border-top: 1px solid #edf2f0; }
+  .s-goal-forecast strong { display: block; color: var(--ink); font-size: 11px; line-height: 1.15; }
+  .s-goal-forecast span { display: block; margin-top: 3px; color: var(--muted); font-size: 9px; line-height: 1.2; }
+  .s-metric-goal.coral .s-goal-forecast strong { color: #c26453; }
+  .s-metric-goal.blue .s-goal-forecast strong { color: #317d9a; }
+  .s-metric-goal-foot { display: flex; align-items: baseline; justify-content: space-between; gap: 5px; min-width: 0; color: var(--muted); font-size: 9px; }
+  .s-metric-goal-foot span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .s-metric-goal-foot strong { color: var(--teal-deep); font-size: 9px; white-space: nowrap; }
+  .s-metric-goal.coral .s-metric-goal-foot strong { color: #c26453; }
+  .s-metric-goal.blue .s-metric-goal-foot strong { color: #317d9a; }
+  @media (max-width: 390px) {
+    .s-metric-goal { padding-left: 9px; padding-right: 9px; }
+    .s-metric-goal-top > em { font-size: 8px; }
+    .s-metric-goal-values { gap: 3px; }
+    .s-metric-goal-values strong { font-size: 21px; }
+    .s-goal-value strong { font-size: 15px; }
+    .s-metric-goal-foot { font-size: 8px; }
+    .s-metric-goal-foot strong { font-size: 8px; }
+  }
+  @media (max-width: 600px) {
+    .s-metric-goal-grid { grid-template-columns: minmax(0, 1fr); }
+    .s-range-controls { width: 100%; }
+    .s-range-controls button { flex: 1 1 0; }
+  }
+  @media (max-width: 600px) {
+    .s-metric-goal-grid { display: block; padding: 4px 12px; border: 1px solid #d8e4e1; border-radius: 18px; background: #fff; }
+    .s-metric-goal { padding: 12px 0; border: 0 !important; border-radius: 0; background: transparent !important; box-shadow: none; }
+    .s-metric-goal + .s-metric-goal { border-top: 1px solid #edf2f0 !important; }
+    .s-trend-card { padding: 13px 11px 10px; }
+    .s-goal-forecast { margin-top: 7px; padding-top: 7px; }
+    .s-goal-forecast strong { font-size: 10px; }
+    .s-goal-forecast span { font-size: 8px; }
+    .s-chart-grid { gap: 7px; }
+    .s-mini-chart { padding: 8px 7px 3px; }
+    .s-mini-chart .s-chart { height: 125px; }
+    .s-details { margin-top: 10px; }
+    .s-detail-card { margin-bottom: 0; padding: 12px 0; border: 0; border-radius: 0; background: transparent; }
+    .s-detail-card + .s-detail-card { margin-top: 4px; padding-top: 14px; border-top: 1px solid #dbe7e4; }
+    .s-body-map { --map-figure-width: 168px; --map-figure-height: 294px; --map-connector: 24px; min-height: 330px; }
+    .s-body-map img { top: 17px; }
+    .s-segment-callout { width: 94px; padding: 7px 8px; }
+    .s-segment-callout.la, .s-segment-callout.ra { --map-connector: 24px; }
+    .s-segment-callout.tr { --map-connector: 46px; }
+    .s-segment-callout.ll, .s-segment-callout.rl { --map-connector: 40px; }
+    .s-segment-callout small { font-size: 7.5px; }
+    .s-segment-callout.la, .s-segment-callout.ra { --pointer-y: 88%; }
+    .s-segment-callout.tr { --pointer-y: 88%; }
+    .s-segment-callout.ll, .s-segment-callout.rl { --pointer-y: 40%; }
+    .s-segment-callout.la, .s-segment-callout.ra { top: 56px; }
+    .s-segment-callout.tr { top: 111px; }
+    .s-segment-callout.ll, .s-segment-callout.rl { top: 164px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="app"></div>
+
+<script>
+/* ✅ แก้ตรงนี้อย่างเดียว */
+const DATA = [
+  {
+    "date": "Jan 24",
+    "isoDate": "2026-01-24",
+    "measuredAt": "2026-01-24T11:51:41",
+    "time": "11:51:41",
+    "profileId": "Jacky",
+    "sourceFile": "Fitdays_20260124-120452.png",
+    "gender": "Male",
+    "age": 26,
+    "height": 176,
+    "daysFromStart": 0,
+    "weight": 82.7,
+    "fat": 20.5,
+    "bf": 24.8,
+    "muscle": 58,
+    "skeletalMuscle": 35.4,
+    "boneMass": 4.2,
+    "proteinMass": 12.4,
+    "waterWeight": 45.6,
+    "score": null,
+    "targetWeight": 72.4,
+    "weightControl": -10.3,
+    "fatControl": -10.3,
+    "muscleControl": 0,
+    "bmi": 26.7,
+    "vis": 8,
+    "bmr": 1713,
+    "fatFreeMass": 62.2,
+    "subcutaneousFat": 17.7,
+    "asmi": 8.9,
+    "bodyAge": 27,
+    "whr": 0.9,
+    "composition": {
+      "ranges": {
+        "weight": [
+          57.9,
+          78.4
+        ],
+        "fat": [
+          8.2,
+          16.3
+        ],
+        "bone": [
+          3.3,
+          4.2
+        ],
+        "protein": [
+          10,
+          12.4
+        ],
+        "water": [
+          36.5,
+          45.5
+        ],
+        "muscle": [
+          46.4,
+          57.9
+        ],
+        "skeletalMuscle": [
+          29.2,
+          35.6
+        ]
+      },
+      "proportions": {
+        "weight": 100,
+        "fat": 24.8,
+        "bone": 5.1,
+        "protein": 15,
+        "water": 55.1,
+        "muscle": 70.1,
+        "skeletalMuscle": 42.8
+      },
+      "evaluation": {
+        "weight": "High",
+        "fat": "High",
+        "bone": "Excellent",
+        "protein": "Excellent",
+        "water": "Excellent",
+        "muscle": "Excellent",
+        "skeletalMuscle": "Standard"
+      }
+    },
+    "sf": {
+      "la": 1.2,
+      "ra": 1.2,
+      "tr": 10.7,
+      "ll": 3.1,
+      "rl": 3.1
+    },
+    "sfPct": {
+      "la": 189.2,
+      "ra": 187.8,
+      "tr": 0,
+      "ll": 183.8,
+      "rl": 183.6
+    },
+    "sm": {
+      "la": 3.5,
+      "ra": 3.6,
+      "tr": 27.1,
+      "ll": 10.2,
+      "rl": 10.2
+    },
+    "smPct": {
+      "la": 104.5,
+      "ra": 104.9,
+      "tr": 99.4,
+      "ll": 107.2,
+      "rl": 107.2
+    },
+    "impedance": {
+      "20": {
+        "ra": 285.5,
+        "la": 289.9,
+        "tr": 24.3,
+        "rl": 276.7,
+        "ll": 278.5
+      },
+      "100": {
+        "ra": 250.7,
+        "la": 255.3,
+        "tr": 19.6,
+        "rl": 240.2,
+        "ll": 242.2
+      }
+    },
+    "balance": {
+      "upper": "Balanced",
+      "lower": "Balanced",
+      "upperLower": "Balanced"
+    },
+    "exerciseCalories": {
+      "fastSkippingRopes": 521,
+      "walk": 165,
+      "walkQuickly": 238,
+      "runSlowly": 289,
+      "yoga": 165,
+      "bike": 247,
+      "basketball": 247,
+      "swim": 289,
+      "climbStairs": 173,
+      "climbMountains": 347
+    }
+  },
+  {
+    "date": "Apr 12",
+    "isoDate": "2026-04-12",
+    "measuredAt": null,
+    "time": null,
+    "profileId": "Jacky",
+    "sourceFile": null,
+    "daysFromStart": 78,
+    "fat": 22,
+    "bf": 26.6,
+    "muscle": 56.7,
+    "vis": 8
+  },
+  {
+    "date": "May 9",
+    "isoDate": "2026-05-09",
+    "measuredAt": "2026-05-09T12:51:32",
+    "time": "12:51:32",
+    "profileId": "Jacky",
+    "sourceFile": "Fitdays_20260509-125320.png",
+    "gender": "Male",
+    "age": 26,
+    "height": 176,
+    "daysFromStart": 105,
+    "weight": 84.1,
+    "fat": 22.1,
+    "bf": 26.3,
+    "muscle": 57.8,
+    "skeletalMuscle": 35.2,
+    "boneMass": 4.2,
+    "proteinMass": 12.4,
+    "waterWeight": 45.4,
+    "score": null,
+    "targetWeight": 72.2,
+    "weightControl": 0,
+    "fatControl": -11.9,
+    "muscleControl": 0,
+    "bmi": 27.2,
+    "vis": 8,
+    "bmr": 1709,
+    "fatFreeMass": 62,
+    "subcutaneousFat": 18.8,
+    "asmi": 8.9,
+    "bodyAge": 27,
+    "whr": 0.91,
+    "composition": {
+      "ranges": {
+        "weight": [
+          57.9,
+          78.4
+        ],
+        "fat": [
+          8.2,
+          16.3
+        ],
+        "bone": [
+          3.3,
+          4.2
+        ],
+        "protein": [
+          10,
+          12.4
+        ],
+        "water": [
+          36.5,
+          45.5
+        ],
+        "muscle": [
+          46.4,
+          57.9
+        ],
+        "skeletalMuscle": [
+          29.2,
+          35.6
+        ]
+      },
+      "proportions": {
+        "weight": 100,
+        "fat": 26.3,
+        "bone": 5,
+        "protein": 14.7,
+        "water": 54,
+        "muscle": 68.7,
+        "skeletalMuscle": 41.9
+      },
+      "evaluation": {
+        "weight": "High",
+        "fat": "High",
+        "bone": "Excellent",
+        "protein": "Excellent",
+        "water": "Standard",
+        "muscle": "Standard",
+        "skeletalMuscle": "Standard"
+      }
+    },
+    "sf": {
+      "la": 1.4,
+      "ra": 1.4,
+      "tr": 11.8,
+      "ll": 3.4,
+      "rl": 3.4
+    },
+    "sfPct": {
+      "la": 208.2,
+      "ra": 209.3,
+      "tr": 271.4,
+      "ll": 197.8,
+      "rl": 198.1
+    },
+    "sm": {
+      "la": 3.5,
+      "ra": 3.5,
+      "tr": 27,
+      "ll": 10.2,
+      "rl": 10.2
+    },
+    "smPct": {
+      "la": 103.7,
+      "ra": 103.6,
+      "tr": 98.3,
+      "ll": 106.1,
+      "rl": 106.2
+    },
+    "impedance": {
+      "20": {
+        "ra": 282.9,
+        "la": 284.3,
+        "tr": 23.9,
+        "rl": 271.1,
+        "ll": 277.1
+      },
+      "100": {
+        "ra": 250.2,
+        "la": 250.3,
+        "tr": 18.2,
+        "rl": 238.5,
+        "ll": 243.4
+      }
+    },
+    "balance": {
+      "upper": "Balanced",
+      "lower": "Balanced",
+      "upperLower": "Balanced"
+    },
+    "exerciseCalories": {
+      "fastSkippingRopes": 529,
+      "walk": 168,
+      "walkQuickly": 242,
+      "runSlowly": 294,
+      "yoga": 168,
+      "bike": 252,
+      "basketball": 252,
+      "swim": 294,
+      "climbStairs": 176,
+      "climbMountains": 353
+    }
+  },
+  {
+    "date": "May 16",
+    "isoDate": "2026-05-16",
+    "measuredAt": "2026-05-16T12:55:22",
+    "time": "12:55:22",
+    "profileId": "Jacky",
+    "sourceFile": "Fitdays_20260516-130201.png",
+    "gender": "Male",
+    "age": 26,
+    "height": 176,
+    "daysFromStart": 112,
+    "weight": 85.1,
+    "fat": 22.4,
+    "bf": 26.3,
+    "muscle": 58.5,
+    "skeletalMuscle": 35.7,
+    "boneMass": 4.2,
+    "proteinMass": 12.5,
+    "waterWeight": 46,
+    "score": null,
+    "targetWeight": 73,
+    "weightControl": -12.1,
+    "fatControl": -12.1,
+    "muscleControl": 0,
+    "bmi": 27.5,
+    "vis": 8,
+    "bmr": 1724,
+    "fatFreeMass": 62.7,
+    "subcutaneousFat": 18.8,
+    "asmi": 9,
+    "bodyAge": 27,
+    "whr": 0.91,
+    "composition": {
+      "ranges": {
+        "weight": [
+          57.9,
+          78.4
+        ],
+        "fat": [
+          8.2,
+          16.3
+        ],
+        "bone": [
+          3.3,
+          4.2
+        ],
+        "protein": [
+          10,
+          12.4
+        ],
+        "water": [
+          36.5,
+          45.5
+        ],
+        "muscle": [
+          46.4,
+          57.9
+        ],
+        "skeletalMuscle": [
+          29.2,
+          35.6
+        ]
+      },
+      "proportions": {
+        "weight": 100,
+        "fat": 26.3,
+        "bone": 4.9,
+        "protein": 14.7,
+        "water": 54.1,
+        "muscle": 68.7,
+        "skeletalMuscle": 42
+      },
+      "evaluation": {
+        "weight": "High",
+        "fat": "High",
+        "bone": "Excellent",
+        "protein": "Excellent",
+        "water": "Excellent",
+        "muscle": "Excellent",
+        "skeletalMuscle": "Excellent"
+      }
+    },
+    "sf": {
+      "la": 1.4,
+      "ra": 1.4,
+      "tr": 12,
+      "ll": 3.4,
+      "rl": 3.4
+    },
+    "sfPct": {
+      "la": 211.8,
+      "ra": 212.5,
+      "tr": 276.1,
+      "ll": 200.4,
+      "rl": 200.5
+    },
+    "sm": {
+      "la": 3.6,
+      "ra": 3.6,
+      "tr": 0,
+      "ll": 10.3,
+      "rl": 10.3
+    },
+    "smPct": {
+      "la": 104.7,
+      "ra": 104.5,
+      "tr": 98.8,
+      "ll": 106.8,
+      "rl": 106.8
+    },
+    "impedance": {
+      "20": {
+        "ra": 278,
+        "la": 275.7,
+        "tr": 23.6,
+        "rl": 267.1,
+        "ll": 273.6
+      },
+      "100": {
+        "ra": 246,
+        "la": 243.6,
+        "tr": 17.8,
+        "rl": 234.8,
+        "ll": 240.7
+      }
+    },
+    "balance": {
+      "upper": "Balanced",
+      "lower": "Balanced",
+      "upperLower": "Balanced"
+    },
+    "exerciseCalories": {
+      "fastSkippingRopes": 536,
+      "walk": 170,
+      "walkQuickly": 245,
+      "runSlowly": 298,
+      "yoga": 170,
+      "bike": 255,
+      "basketball": 255,
+      "swim": 298,
+      "climbStairs": 178,
+      "climbMountains": 357
+    }
+  },
+  {
+    "date": "May 21",
+    "isoDate": "2026-05-21",
+    "measuredAt": "2026-05-21T10:14:49",
+    "time": "10:14:49",
+    "profileId": "Jacky",
+    "sourceFile": "Fitdays_20260521-102442.png",
+    "gender": "Male",
+    "age": 26,
+    "height": 176,
+    "daysFromStart": 117,
+    "weight": 84.4,
+    "fat": 21.5,
+    "bf": 25.5,
+    "muscle": 58.6,
+    "skeletalMuscle": 35.8,
+    "boneMass": 4.2,
+    "proteinMass": 12.6,
+    "waterWeight": 46,
+    "score": null,
+    "targetWeight": 73.1,
+    "weightControl": 0,
+    "fatControl": -11.3,
+    "muscleControl": 0,
+    "bmi": 27.2,
+    "vis": 8,
+    "bmr": 1726,
+    "fatFreeMass": 62.8,
+    "subcutaneousFat": 18.2,
+    "asmi": 9,
+    "bodyAge": 27,
+    "whr": 0.91,
+    "composition": {
+      "ranges": {
+        "weight": [
+          57.9,
+          78.4
+        ],
+        "fat": [
+          8.2,
+          16.3
+        ],
+        "bone": [
+          3.3,
+          4.2
+        ],
+        "protein": [
+          10,
+          12.4
+        ],
+        "water": [
+          36.5,
+          45.5
+        ],
+        "muscle": [
+          46.4,
+          57.9
+        ],
+        "skeletalMuscle": [
+          29.2,
+          35.6
+        ]
+      },
+      "proportions": {
+        "weight": 100,
+        "fat": 25.5,
+        "bone": 5,
+        "protein": 14.9,
+        "water": 54.5,
+        "muscle": 69.4,
+        "skeletalMuscle": 42.4
+      },
+      "evaluation": {
+        "weight": "High",
+        "fat": "High",
+        "bone": "Excellent",
+        "protein": "Excellent",
+        "water": "Excellent",
+        "muscle": "Excellent",
+        "skeletalMuscle": "Excellent"
+      }
+    },
+    "sf": {
+      "la": 1.3,
+      "ra": 1.3,
+      "tr": 11.4,
+      "ll": 3.3,
+      "rl": 3.3
+    },
+    "sfPct": {
+      "la": 201.6,
+      "ra": 202.1,
+      "tr": 262.8,
+      "ll": 193.7,
+      "rl": 193.2
+    },
+    "sm": {
+      "la": 3.6,
+      "ra": 3.6,
+      "tr": 27.3,
+      "ll": 10.3,
+      "rl": 10.3
+    },
+    "smPct": {
+      "la": 105,
+      "ra": 105.1,
+      "tr": 99.3,
+      "ll": 107.4,
+      "rl": 107.3
+    },
+    "impedance": {
+      "20": {
+        "ra": 278.5,
+        "la": 283.5,
+        "tr": 24.4,
+        "rl": 265.2,
+        "ll": 268
+      },
+      "100": {
+        "ra": 245.9,
+        "la": 249.3,
+        "tr": 19.2,
+        "rl": 231.1,
+        "ll": 234.7
+      }
+    },
+    "balance": {
+      "upper": "Balanced",
+      "lower": "Balanced",
+      "upperLower": "Balanced"
+    },
+    "exerciseCalories": {
+      "fastSkippingRopes": 531,
+      "walk": 169,
+      "walkQuickly": 243,
+      "runSlowly": 295,
+      "yoga": 169,
+      "bike": 253,
+      "basketball": 253,
+      "swim": 295,
+      "climbStairs": 177,
+      "climbMountains": 354
+    }
+  },
+  {
+    "date": "May 23",
+    "isoDate": "2026-05-23",
+    "measuredAt": "2026-05-23T10:55:45",
+    "time": "10:55:45",
+    "profileId": "Jacky",
+    "sourceFile": "Fitdays_20260523-105604.png",
+    "gender": "Male",
+    "age": 26,
+    "height": 176,
+    "daysFromStart": 119,
+    "weight": 83.8,
+    "fat": 21.7,
+    "bf": 25.9,
+    "muscle": 57.9,
+    "skeletalMuscle": 35.4,
+    "boneMass": 4.2,
+    "proteinMass": 12.4,
+    "waterWeight": 45.5,
+    "score": null,
+    "targetWeight": 72.3,
+    "weightControl": 0,
+    "fatControl": -11.5,
+    "muscleControl": 0,
+    "bmi": 27.1,
+    "vis": 8,
+    "bmr": 1711,
+    "fatFreeMass": 62.1,
+    "subcutaneousFat": 18.5,
+    "asmi": 8.9,
+    "bodyAge": 27,
+    "whr": 0.9,
+    "composition": {
+      "ranges": {
+        "weight": [
+          57.9,
+          78.4
+        ],
+        "fat": [
+          8.2,
+          16.3
+        ],
+        "bone": [
+          3.3,
+          4.2
+        ],
+        "protein": [
+          10,
+          12.4
+        ],
+        "water": [
+          36.5,
+          45.5
+        ],
+        "muscle": [
+          46.4,
+          57.9
+        ],
+        "skeletalMuscle": [
+          29.2,
+          35.6
+        ]
+      },
+      "proportions": {
+        "weight": 100,
+        "fat": 25.9,
+        "bone": 5,
+        "protein": 14.8,
+        "water": 54.3,
+        "muscle": 69.1,
+        "skeletalMuscle": 42.2
+      },
+      "evaluation": {
+        "weight": "High",
+        "fat": "High",
+        "bone": "Excellent",
+        "protein": "Excellent",
+        "water": "Excellent",
+        "muscle": "Excellent",
+        "skeletalMuscle": "Standard"
+      }
+    },
+    "sf": {
+      "la": 1.3,
+      "ra": 1.3,
+      "tr": 11.4,
+      "ll": 3.3,
+      "rl": 3.3
+    },
+    "sfPct": {
+      "la": 203.2,
+      "ra": 203.7,
+      "tr": 263.4,
+      "ll": 193.7,
+      "rl": 193.7
+    },
+    "sm": {
+      "la": 3.5,
+      "ra": 3.6,
+      "tr": 27,
+      "ll": 10.2,
+      "rl": 10.2
+    },
+    "smPct": {
+      "la": 103.8,
+      "ra": 104,
+      "tr": 98.6,
+      "ll": 106.4,
+      "rl": 106.4
+    },
+    "impedance": {
+      "20": {
+        "ra": 282.8,
+        "la": 288.2,
+        "tr": 25.5,
+        "rl": 272.1,
+        "ll": 279.2
+      },
+      "100": {
+        "ra": 249.5,
+        "la": 253.2,
+        "tr": 20,
+        "rl": 237,
+        "ll": 243.6
+      }
+    },
+    "balance": {
+      "upper": "Balanced",
+      "lower": "Balanced",
+      "upperLower": "Balanced"
+    },
+    "exerciseCalories": {
+      "fastSkippingRopes": 527,
+      "walk": 168,
+      "walkQuickly": 242,
+      "runSlowly": 293,
+      "yoga": 168,
+      "bike": 251,
+      "basketball": 251,
+      "swim": 293,
+      "climbStairs": 176,
+      "climbMountains": 352
+    }
+  },
+  {
+    "date": "May 28",
+    "isoDate": "2026-05-28",
+    "measuredAt": "2026-05-28T09:35:35",
+    "time": "09:35:35",
+    "profileId": "Jacky",
+    "sourceFile": "Fitdays_20260528-093548.png",
+    "gender": "Male",
+    "age": 26,
+    "height": 176,
+    "daysFromStart": 124,

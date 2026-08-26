@@ -52,6 +52,7 @@ const LATEST_DATE = '2026-08-26';
 window.__JACKY_TRACKER__ = {DATA, TARGET, MUSCLE_TARGET, TOTAL_DAYS, LATEST_DATE};
 
 (function installScanMetricHelp() {
+  if (typeof document === 'undefined') return;
   const metricHelp = {
     Weight: 'น้ำหนักตัวทั้งหมด ไม่ใช่ว่ายิ่งน้อยยิ่งดี เพราะน้ำหนักรวมทั้งไขมัน กล้ามเนื้อ น้ำ และส่วนอื่น ๆ ของร่างกาย\nแนวโน้ม: ดูคู่กับไขมันและกล้ามเนื้อเป็นหลัก',
     'Fat Mass': 'น้ำหนักไขมันทั้งหมดในร่างกาย วัดเป็นกิโลกรัม\nแนวโน้ม: สำหรับเป้าหมายลดไขมัน โดยทั่วไปลดลงดี ถ้ายังรักษากล้ามเนื้อไว้ได้',

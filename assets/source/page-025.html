@@ -50,3 +50,80 @@ const MUSCLE_TARGET = 63.0;
 const TOTAL_DAYS = 310; /* Jan 24 → Nov 30 */
 const LATEST_DATE = '2026-08-26';
 window.__JACKY_TRACKER__ = {DATA, TARGET, MUSCLE_TARGET, TOTAL_DAYS, LATEST_DATE};
+
+(function installScanMetricHelp() {
+  const metricHelp = {
+    Weight: 'น้ำหนักตัวทั้งหมด ไม่ใช่ว่ายิ่งน้อยยิ่งดี เพราะน้ำหนักรวมทั้งไขมัน กล้ามเนื้อ น้ำ และส่วนอื่น ๆ ของร่างกาย\nแนวโน้ม: ดูคู่กับไขมันและกล้ามเนื้อเป็นหลัก',
+    'Fat Mass': 'น้ำหนักไขมันทั้งหมดในร่างกาย วัดเป็นกิโลกรัม\nแนวโน้ม: สำหรับเป้าหมายลดไขมัน โดยทั่วไปลดลงดี ถ้ายังรักษากล้ามเนื้อไว้ได้',
+    'Body Fat': 'เปอร์เซ็นต์ของน้ำหนักตัวที่เป็นไขมัน ช่วยดูสัดส่วนไขมันได้ชัดกว่าน้ำหนักอย่างเดียว\nแนวโน้ม: โดยทั่วไปลดลงดีจนถึงช่วงเป้าหมาย ไม่ใช่ยิ่งต่ำไม่จำกัดยิ่งดี',
+    'Muscle Mass': 'มวลกล้ามเนื้อรวมที่ Fitdays ประเมิน เป็นนิยามกว้างและมีองค์ประกอบมากกว่า Skeletal Muscle จึงมีตัวเลขสูงกว่า และค่า BIA สามารถแกว่งตามน้ำได้\nแนวโน้ม: ระหว่างลดไขมัน อยากให้รักษาไว้หรือเพิ่มขึ้น',
+    'Skeletal Muscle': 'กล้ามเนื้อโครงร่างที่เกาะกับกระดูกและใช้เดิน ยก ดัน ดึง และเล่นเวท เป็นส่วนหนึ่งของ Muscle Mass ไม่ใช่คนละก้อนกัน\nแนวโน้ม: โดยทั่วไปยิ่งรักษาไว้หรือเพิ่มขึ้นได้ยิ่งดี โดยดูแนวโน้มหลายครั้งเพราะ BIA แกว่งตามน้ำ',
+    'Body Water': 'ปริมาณน้ำในร่างกาย น้ำ อาหาร เกลือ ไกลโคเจน และการออกกำลังทำให้ค่านี้เปลี่ยนรายวัน และส่งผลต่อค่าไขมัน/กล้ามเนื้อของ BIA ด้วย\nแนวโน้ม: ไม่ใช่ยิ่งสูงยิ่งดี ควรอยู่ในช่วงเหมาะสมและชั่งในเงื่อนไขใกล้เคียงกัน',
+    BMI: 'ดัชนีน้ำหนักเทียบกับส่วนสูง ใช้ดูภาพรวมได้ แต่แยกไม่ได้ว่าน้ำหนักมาจากไขมันหรือกล้ามเนื้อ จึงไม่ควรใช้ตัดสินคนเล่นเวทเพียงค่าเดียว\nแนวโน้ม: ควรอยู่ในช่วงเหมาะสม และดูคู่กับ Body Fat กับ Muscle Mass',
+    'Visceral Fat': 'ไขมันที่สะสมรอบอวัยวะภายในช่องท้อง เป็นไขมันที่เกี่ยวข้องกับความเสี่ยงสุขภาพมากกว่าไขมันใต้ผิวหนัง\nแนวโน้ม: โดยทั่วไปยิ่งต่ำภายในช่วงสุขภาพดียิ่งดี',
+    BMR: 'พลังงานโดยประมาณที่ร่างกายใช้ใน 1 วันถ้านอนพักเฉย ๆ เพื่อให้ระบบพื้นฐานของร่างกายทำงาน ค่านี้ขึ้นกับขนาดตัว กล้ามเนื้อ อายุ และเพศ\nแนวโน้ม: ไม่ใช่ยิ่งสูงยิ่งดี และไม่จำเป็นต้องไล่เพิ่มค่าโดยตรง',
+    'Body Age': 'อายุร่างกายที่แอปคำนวณเปรียบเทียบองค์ประกอบร่างกายกับคนช่วงอายุต่าง ๆ เป็นคะแนนประมาณการของแอป ไม่ใช่อายุทางการแพทย์\nแนวโน้ม: ต่ำกว่าอายุจริงอาจดูดี แต่ใช้เป็นข้อมูลประกอบ ไม่ใช่เป้าหมายหลัก'
+  };
+  const aliases = {
+    'น้ำหนัก': 'Weight', 'Weight': 'Weight',
+    'Fat mass': 'Fat Mass', 'Fat Mass': 'Fat Mass',
+    'Body fat': 'Body Fat', 'Body Fat': 'Body Fat',
+    'Muscle mass': 'Muscle Mass', 'Muscle Mass': 'Muscle Mass',
+    'กล้ามเนื้อโครงร่าง': 'Skeletal Muscle', 'Skeletal muscle': 'Skeletal Muscle', 'Skeletal Muscle': 'Skeletal Muscle',
+    'น้ำในร่างกาย': 'Body Water', 'Body water': 'Body Water', 'Body Water': 'Body Water',
+    'BMI': 'BMI',
+    'ไขมันช่องท้อง': 'Visceral Fat', 'Visceral fat': 'Visceral Fat', 'Visceral Fat': 'Visceral Fat',
+    'BMR': 'BMR',
+    'อายุร่างกาย': 'Body Age', 'Body age': 'Body Age', 'Body Age': 'Body Age'
+  };
+
+  const addStyles = () => {
+    if (document.getElementById('scan-metric-help-style')) return;
+    const style = document.createElement('style');
+    style.id = 'scan-metric-help-style';
+    style.textContent = `
+      .s-metric-label{display:inline-flex;align-items:center;gap:6px;min-width:0}
+      .s-metric-info{appearance:none;-webkit-appearance:none;position:relative;display:inline-grid;place-items:center;flex:0 0 auto;width:16px;height:16px;padding:0;border:1px solid #9aa8aa;border-radius:50%;background:#fff;color:#667477;font:700 10px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;cursor:help;vertical-align:middle}
+      .s-metric-info:hover,.s-metric-info:focus-visible,.s-metric-info:focus{border-color:#147d7a;color:#147d7a;outline:none}
+      .s-metric-info::after{content:attr(data-tooltip);position:absolute;left:0;bottom:calc(100% + 8px);z-index:1000;width:min(310px,78vw);padding:10px 11px;border:1px solid #d7e3e1;border-radius:10px;background:#172326;color:#fff;box-shadow:0 10px 28px rgba(23,35,38,.2);font:400 12px/1.55 -apple-system,BlinkMacSystemFont,"Noto Sans Thai","Segoe UI",sans-serif;letter-spacing:0;text-align:left;white-space:pre-line;opacity:0;visibility:hidden;transform:translateY(4px);transition:opacity .14s ease,transform .14s ease,visibility .14s ease;pointer-events:none}
+      .s-metric-info:hover::after,.s-metric-info:focus::after,.s-metric-info:focus-visible::after{opacity:1;visibility:visible;transform:translateY(0)}
+      @media (max-width:560px){.s-metric-info::after{left:-10px;width:min(280px,78vw)}}
+    `;
+    document.head.appendChild(style);
+  };
+
+  const enhance = container => {
+    if (!container) return;
+    container.querySelectorAll('.s-detail-comparison .s-detail-row').forEach(row => {
+      if (row.dataset.metricHelpReady === '1') return;
+      const label = row.querySelector(':scope > span');
+      if (!label) return;
+      const metricName = aliases[label.textContent.trim()];
+      if (!metricName || !metricHelp[metricName]) return;
+      row.dataset.metricHelpReady = '1';
+      label.textContent = '';
+      label.classList.add('s-metric-label');
+      const text = document.createElement('span');
+      text.textContent = metricName;
+      const info = document.createElement('button');
+      info.type = 'button';
+      info.className = 's-metric-info';
+      info.textContent = 'i';
+      info.setAttribute('data-tooltip', metricHelp[metricName]);
+      info.setAttribute('aria-label', metricName + ': ' + metricHelp[metricName].replace(/\n/g, ' '));
+      label.append(text, info);
+    });
+  };
+
+  const start = () => {
+    addStyles();
+    const container = document.getElementById('s-detail-content');
+    if (!container) return;
+    enhance(container);
+    const observer = new MutationObserver(() => enhance(container));
+    observer.observe(container, {childList: true, subtree: true});
+  };
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, {once: true});
+  else start();
+})();

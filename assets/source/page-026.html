@@ -1,0 +1,524 @@
+/* ❌ ห้ามแก้ใต้นี้ */
+
+const s = DATA[0], l = DATA[DATA.length-1];
+const prev = DATA.length > 1  ? DATA[DATA.length-2] : null;
+const p7   = DATA.length >= 8 ? DATA[DATA.length-8] : null;
+
+const targetLine = DATA.map(d => +(s.fat - (d.daysFromStart/TOTAL_DAYS)*(s.fat-TARGET)).toFixed(2));
+const weeksLeft  = (TOTAL_DAYS - l.daysFromStart) / 7;
+const fatLeft    = l.fat - TARGET;
+const reqRate    = (fatLeft / weeksLeft).toFixed(2);
+const actualRateW = ((s.fat - l.fat) / (l.daysFromStart/7)).toFixed(2);
+const pct = Math.min(100, Math.round((s.fat-l.fat)/(s.fat-TARGET)*100));
+const onTrack = parseFloat(actualRateW) >= parseFloat(reqRate);
+
+const delta = (cur, ref) => {
+  if (ref == null) return '<span class="gr">—</span>';
+  const d = +(cur-ref).toFixed(1);
+  const c = d<0?'g':d>0?'r':'gr';
+  return `<span class="${c}">${d>0?'+':''}${d}</span>`;
+};
+
+const card = (label, value, sub, good) =>
+  `<div class="card">
+    <div class="cl">${label}</div>
+    <div class="cv">${value}</div>
+    <div class="cd ${good?'g':'r'}">${sub}</div>
+  </div>`;
+
+document.getElementById('app').innerHTML = `
+  <p class="sec mb">Jacky — body tracker · ${DATA[DATA.length-1].date}</p>
+
+  <div class="desktop-grid">
+    <!-- LEFT COL: Stats + Progress + Deltas + Segmental -->
+    <div class="left-col">
+
+      <!-- 4 stat cards -->
+      <div class="grid2">
+        ${card('Fat mass', l.fat.toFixed(1)+' kg', '−'+(s.fat-l.fat).toFixed(1)+' kg จากเริ่ม', true)}
+        ${card('BF%', l.bf.toFixed(1)+'%', '−'+(s.bf-l.bf).toFixed(1)+'% จากเริ่ม', true)}
+        ${card('Muscle', l.muscle.toFixed(1)+' kg', '+'+(l.muscle-s.muscle).toFixed(1)+' kg จากเริ่ม', true)}
+        ${card('Visceral', l.vis, l.vis<=7?'ปกติ ✓':'เฝ้าระวัง', l.vis<=7)}
+      </div>
+
+      <!-- Progress bar -->
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:#888;margin-bottom:6px">
+          <span>เป้า Nov'26 → ${TARGET} kg fat</span><span>${pct}%</span>
+        </div>
+        <div style="background:#2a2a2a;border-radius:4px;height:8px;overflow:hidden">
+          <div style="width:${pct}%;height:8px;border-radius:4px;background:#1D9E75"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;margin-top:6px">
+          <span class="gr">fat เหลือ ${fatLeft.toFixed(1)} kg</span>
+          <span class="${onTrack?'g':'r'}">ต้องการ −${reqRate} · actual −${actualRateW} kg/wk</span>
+        </div>
+        <div style="margin-top:10px">
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:#888;margin-bottom:6px">
+            <span>Muscle → เป้า ${MUSCLE_TARGET} kg</span>
+            <span style="color:#378ADD">${Math.min(100,Math.round((l.muscle-s.muscle)/(MUSCLE_TARGET-s.muscle)*100))}%</span>
+          </div>
+          <div style="background:#2a2a2a;border-radius:4px;height:8px;overflow:hidden">
+            <div style="width:${Math.min(100,Math.round((l.muscle-s.muscle)/(MUSCLE_TARGET-s.muscle)*100))}%;height:8px;border-radius:4px;background:#378ADD"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;margin-top:6px">
+            <span class="gr">muscle เหลือ ${(MUSCLE_TARGET-l.muscle).toFixed(1)} kg</span>
+            <span style="color:#378ADD">${l.muscle.toFixed(1)} → ${MUSCLE_TARGET} kg</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Delta vs yesterday/7d -->
+      <div class="card">
+        <div style="font-size:11px;color:#555;margin-bottom:10px">เทียบล่าสุด</div>
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;font-size:12px;color:#888">
+          <div>fat vs เมื่อวาน: ${delta(l.fat, prev?.fat)}</div>
+          <div>fat vs 7 วัน: ${delta(l.fat, p7?.fat)}</div>
+          <div>muscle vs เมื่อวาน: ${delta(l.muscle, prev?.muscle)}</div>
+          <div>muscle vs 7 วัน: ${delta(l.muscle, p7?.muscle)}</div>
+        </div>
+      </div>
+
+      <!-- Segmental latest -->
+      <div class="card">
+        <div style="font-size:12px;color:#888;margin-bottom:10px">Segmental ล่าสุด</div>
+        <div id="seg-display"></div>
+      </div>
+
+      <!-- Recommendation -->
+      <div class="card" style="border-left:2px solid #F5A623">
+        <div style="font-size:11px;color:#F5A623;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">📊 วิเคราะห์จาก Data</div>
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px">
+          <div style="background:#111;border-radius:8px;padding:10px">
+            <div style="font-size:10px;color:#555;margin-bottom:4px">กินจริงตอนนี้</div>
+            <div style="font-size:18px;font-weight:500;color:#E24B4A">~2,499 kcal</div>
+            <div style="font-size:11px;color:#555;margin-top:2px">คำนวณจาก fat loss rate</div>
+          </div>
+          <div style="background:#111;border-radius:8px;padding:10px">
+            <div style="font-size:10px;color:#555;margin-bottom:4px">ควรกิน (deficit 500)</div>
+            <div style="font-size:18px;font-weight:500;color:#1D9E75">~2,219 kcal</div>
+            <div style="font-size:11px;color:#555;margin-top:2px">ลดอีก ~280 kcal/วัน</div>
+          </div>
+        </div>
+        <div style="font-size:11px;color:#555;margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em">ลำดับสิ่งที่ต้องทำ</div>
+        <div style="display:flex;gap:8px;padding:7px 0;border-bottom:0.5px solid #222;align-items:flex-start">
+          <span style="flex-shrink:0">1️⃣</span>
+          <div><div style="font-size:12px;color:#E24B4A;font-weight:500">ตัด DQ / Swensen's</div><div style="font-size:11px;color:#555">−400–500 kcal/ครั้ง · สัปดาห์ละครั้งพอ</div></div>
+        </div>
+        <div style="display:flex;gap:8px;padding:7px 0;border-bottom:0.5px solid #222;align-items:flex-start">
+          <span style="flex-shrink:0">2️⃣</span>
+          <div><div style="font-size:12px;color:#F5A623;font-weight:500">บอกร้าน "น้ำมันน้อย" ทุกมื้อ</div><div style="font-size:11px;color:#555">−200–300 kcal/วัน</div></div>
+        </div>
+        <div style="display:flex;gap:8px;padding:7px 0;border-bottom:0.5px solid #222;align-items:flex-start">
+          <span style="flex-shrink:0">3️⃣</span>
+          <div><div style="font-size:12px;color:#1D9E75;font-weight:500">ขนม ≤ 200 kcal/วัน</div><div style="font-size:11px;color:#555">โยเกิร์ต · 1 สคูป · ไม่ใช่ DQ L</div></div>
+        </div>
+        <div style="display:flex;gap:8px;padding:7px 0;align-items:flex-start">
+          <span style="flex-shrink:0">4️⃣</span>
+          <div><div style="font-size:12px;color:#1D9E75;font-weight:500">Cardio 4 วัน/สัปดาห์</div><div style="font-size:11px;color:#555">+229 kcal/วัน · deficit หลักตอนนี้</div></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT COL: Charts + Pattern + Log -->
+    <div class="right-col">
+
+      <!-- Fat chart -->
+      <div class="card">
+        <div style="font-size:12px;color:#888;margin-bottom:6px">Fat mass trend</div>
+        <div class="legend">
+          <div class="li"><span class="ld" style="background:#378ADD"></span>fat mass</div>
+          <div class="li"><span class="ld" style="background:#E24B4A"></span>เป้า rate (−${reqRate} kg/wk)</div>
+        </div>
+        <div style="position:relative;width:100%;height:220px"><canvas id="c1"></canvas></div>
+      </div>
+
+      <!-- Muscle chart -->
+      <div class="card">
+        <div style="font-size:12px;color:#888;margin-bottom:6px">Muscle mass trend</div>
+        <div style="position:relative;width:100%;height:180px"><canvas id="c2"></canvas></div>
+      </div>
+
+      <!-- Pattern analysis -->
+      <div class="card">
+        <div style="font-size:12px;color:#888;margin-bottom:10px">Pattern จาก data</div>
+        <div id="pattern-analysis"></div>
+      </div>
+
+      <!-- Body response log -->
+      <div class="card">
+        <div style="font-size:12px;color:#888;margin-bottom:8px">Body response log</div>
+        <div id="seg-log"></div>
+      </div>
+
+      <!-- Data log table -->
+      <div class="card">
+        <div style="font-size:12px;color:#888;margin-bottom:8px">log ตัวเลข</div>
+        <table id="tbl"></table>
+      </div>
+
+    </div>
+  </div>
+`;
+
+// Segmental display
+const segData = DATA.filter(d => d.sf && d.sm);
+const segEl = document.getElementById('seg-display');
+
+if (segData.length === 0) {
+  segEl.innerHTML = '<div style="color:#555;font-size:12px">ยังไม่มีข้อมูล segmental</div>';
+} else {
+  const latest = segData[segData.length - 1];
+  const prev   = segData.length > 1 ? segData[segData.length - 2] : null;
+  const first  = segData[0];
+
+  const parts = [
+    {key:'la', label:'แขนซ้าย'},
+    {key:'ra', label:'แขนขวา'},
+    {key:'tr', label:'แกนกลาง'},
+    {key:'ll', label:'ขาซ้าย'},
+    {key:'rl', label:'ขาขวา'},
+  ];
+
+  const d1 = (cur, ref) => {
+    if (ref == null) return '—';
+    const d = +(cur - ref).toFixed(1);
+    return d;
+  };
+  const badge = (val, invert) => {
+    if (val === '—') return '<span style="color:#333">—</span>';
+    const good = invert ? val < 0 : val > 0;
+    const c = val === 0 ? '#555' : good ? '#1D9E75' : '#E24B4A';
+    return `<span style="color:${c}">${val > 0 ? '+' : ''}${val}</span>`;
+  };
+
+  segEl.innerHTML = `
+    <div style="display:grid;grid-template-columns:70px 1fr 1fr;gap:4px;margin-bottom:6px;font-size:10px;color:#444;text-transform:uppercase;letter-spacing:.05em">
+      <div></div>
+      <div style="color:#E24B4A">Fat (kg)</div>
+      <div style="color:#378ADD">Muscle (kg)</div>
+    </div>
+    <div style="display:grid;grid-template-columns:70px 1fr 1fr;gap:4px;margin-bottom:8px;font-size:10px;color:#333">
+      <div></div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:2px;font-size:9px;color:#444">
+        <span>ตอนนี้</span><span>±เมื่อวาน</span><span>±รวม</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:2px;font-size:9px;color:#444">
+        <span>ตอนนี้</span><span>±เมื่อวาน</span><span>±รวม</span>
+      </div>
+    </div>
+    ${parts.map(p => {
+      const fp = d1(latest.sf[p.key], prev?.sf[p.key]);
+      const ft = d1(latest.sf[p.key], first.sf[p.key]);
+      const mp = d1(latest.sm[p.key], prev?.sm[p.key]);
+      const mt = d1(latest.sm[p.key], first.sm[p.key]);
+      return `
+    <div style="display:grid;grid-template-columns:70px 1fr 1fr;gap:4px;padding:6px 0;border-bottom:0.5px solid #222;align-items:center">
+      <div style="font-size:11px;color:#666">${p.label}</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:2px;font-size:11px">
+        <span style="color:#E24B4A">${latest.sf[p.key]}</span>
+        <span>${badge(fp, true)}</span>
+        <span>${badge(ft, true)}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:2px;font-size:11px">
+        <span style="color:#378ADD">${latest.sm[p.key]}</span>
+        <span>${badge(mp, false)}</span>
+        <span>${badge(mt, false)}</span>
+      </div>
+    </div>`;
+    }).join('')}
+    <div style="display:grid;grid-template-columns:70px 1fr 1fr;gap:4px;padding:6px 0;margin-top:4px">
+      <div style="font-size:10px;color:#444;font-weight:500">รวม</div>
+      <div style="font-size:11px;color:#E24B4A">
+        ${+(Object.values(latest.sf).reduce((a,b)=>a+b,0)).toFixed(1)} kg
+        <span style="font-size:10px;color:#555"> (เริ่ม ${+(Object.values(first.sf).reduce((a,b)=>a+b,0)).toFixed(1)})</span>
+      </div>
+      <div style="font-size:11px;color:#378ADD">
+        ${+(Object.values(latest.sm).reduce((a,b)=>a+b,0)).toFixed(1)} kg
+        <span style="font-size:10px;color:#555"> (เริ่ม ${+(Object.values(first.sm).reduce((a,b)=>a+b,0)).toFixed(1)})</span>
+      </div>
+    </div>
+    <div style="font-size:10px;color:#333;margin-top:4px">±เมื่อวาน = vs scan ก่อน · ±รวม = vs Jun 1 (เริ่มเก็บ segmental)</div>
+  `;
+}
+
+const opts = (ymin, ymax) => ({
+  responsive:true, maintainAspectRatio:false,
+  plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false}},
+  scales:{
+    x:{ticks:{color:'#555',font:{size:10},maxRotation:45,autoSkip:true,maxTicksLimit:8},grid:{color:'rgba(255,255,255,0.05)'}},
+    y:{ticks:{color:'#555',font:{size:10}},grid:{color:'rgba(255,255,255,0.05)'},min:ymin,max:ymax}
+  }
+});
+
+new Chart(document.getElementById('c1'), {
+  type:'line',
+  data:{labels:DATA.map(d=>d.date), datasets:[
+    {label:'fat mass', data:DATA.map(d=>d.fat), borderColor:'#378ADD', backgroundColor:'#378ADD15', borderWidth:2.5, pointRadius:4, pointBackgroundColor:'#378ADD', tension:0.3, fill:true},
+    {label:'target',  data:targetLine,           borderColor:'#E24B4A', borderWidth:2, borderDash:[6,4], pointRadius:0, fill:false}
+  ]},
+  options:opts(17, 24)
+});
+
+new Chart(document.getElementById('c2'), {
+  type:'line',
+  data:{labels:DATA.map(d=>d.date), datasets:[
+    {data:DATA.map(d=>d.muscle), borderColor:'#1D9E75', backgroundColor:'#1D9E7515', borderWidth:2.5, pointRadius:4, pointBackgroundColor:'#1D9E75', tension:0.35, fill:true}
+  ]},
+  options:opts(55, 62)
+});
+
+// Pattern Analysis
+const patternEl = document.getElementById('pattern-analysis');
+const segLogEl = document.getElementById('seg-log');
+const segD = DATA.filter(d => d.sf && d.sm);
+const partsP = [{key:'la',label:'แขนL'},{key:'ra',label:'แขนR'},{key:'tr',label:'แกนกลาง'},{key:'ll',label:'ขาL'},{key:'rl',label:'ขาR'}];
+
+if (patternEl && segD.length > 1) {
+  const fatRanges = partsP.map(p => {
+    const vals = segD.map(d => d.sf[p.key]);
+    return {...p, range: +(Math.max(...vals)-Math.min(...vals)).toFixed(1)};
+  }).sort((a,b) => b.range - a.range);
+  const muscleRanges = partsP.map(p => {
+    const vals = segD.map(d => d.sm[p.key]);
+    return {...p, range: +(Math.max(...vals)-Math.min(...vals)).toFixed(1)};
+  }).sort((a,b) => b.range - a.range);
+
+  const fatMoverCount = {}, muscleMoverCount = {};
+  partsP.forEach(p => { fatMoverCount[p.key] = 0; muscleMoverCount[p.key] = 0; });
+  for (let i = 1; i < segD.length; i++) {
+    const prev = segD[i-1], cur = segD[i];
+    const fchanges = partsP.map(p => ({k:p.key, d:Math.abs(+(cur.sf[p.key]-prev.sf[p.key]).toFixed(1))}));
+    const mchanges = partsP.map(p => ({k:p.key, d:Math.abs(+(cur.sm[p.key]-prev.sm[p.key]).toFixed(1))}));
+    const bF = fchanges.reduce((a,b) => a.d >= b.d ? a : b);
+    const bM = mchanges.reduce((a,b) => a.d >= b.d ? a : b);
+    if (bF.d > 0) fatMoverCount[bF.k]++;
+    if (bM.d > 0) muscleMoverCount[bM.k]++;
+  }
+  const first = segD[0], last2 = segD[segD.length-1];
+  const maxFR = fatRanges[0].range || 1;
+  const maxMR = muscleRanges[0].range || 1;
+  const bar = (r, max) => `<div style="background:#222;border-radius:3px;height:4px;margin-top:3px"><div style="width:${Math.round(r/max*100)}%;height:4px;border-radius:3px;background:#F5A623"></div></div>`;
+
+  patternEl.innerHTML = `
+    <div style="font-size:10px;color:#555;margin-bottom:8px">ส่วนที่ sensitive ที่สุด (range ตลอดช่วง)</div>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px">
+      <div>
+        <div style="font-size:10px;color:#E24B4A;margin-bottom:6px">🔴 Fat</div>
+        ${fatRanges.map(r=>`<div style="margin-bottom:5px"><div style="display:flex;justify-content:space-between;font-size:11px"><span style="color:${r.key==='tr'?'#F5A623':'#888'}">${r.label}</span><span style="color:${r.key==='tr'?'#F5A623':'#555'}">${r.range}kg</span></div>${bar(r.range,maxFR)}</div>`).join('')}
+      </div>
+      <div>
+        <div style="font-size:10px;color:#378ADD;margin-bottom:6px">💪 Muscle</div>
+        ${muscleRanges.map(r=>`<div style="margin-bottom:5px"><div style="display:flex;justify-content:space-between;font-size:11px"><span style="color:${r.key==='tr'?'#F5A623':'#888'}">${r.label}</span><span style="color:${r.key==='tr'?'#F5A623':'#555'}">${r.range}kg</span></div>${bar(r.range,maxMR)}</div>`).join('')}
+      </div>
+    </div>
+    <div style="font-size:10px;color:#555;margin-bottom:6px">เปลี่ยนบ่อยสุด (${segD.length-1} วัน)</div>
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-bottom:12px">
+      ${partsP.map(p=>`<div style="text-align:center;background:#111;border-radius:6px;padding:5px 2px">
+        <div style="font-size:9px;color:${p.key==='tr'?'#F5A623':'#555'};margin-bottom:3px">${p.label.replace('(ท้อง)','')}</div>
+        <div style="font-size:10px;color:#E24B4A">${fatMoverCount[p.key]}F</div>
+        <div style="font-size:10px;color:#378ADD">${muscleMoverCount[p.key]}M</div>
+      </div>`).join('')}
+    </div>
+    <div style="font-size:10px;color:#555;margin-bottom:6px">Overall Jun 1 → ล่าสุด</div>
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-bottom:10px">
+      ${partsP.map(p=>{const fd=+(last2.sf[p.key]-first.sf[p.key]).toFixed(1);const md=+(last2.sm[p.key]-first.sm[p.key]).toFixed(1);return`<div style="text-align:center;background:#111;border-radius:6px;padding:5px 2px"><div style="font-size:9px;color:${p.key==='tr'?'#F5A623':'#555'};margin-bottom:3px">${p.label.replace('(ท้อง)','')}</div><div style="font-size:10px;color:${fd<0?'#1D9E75':fd>0?'#E24B4A':'#444'}">${fd>0?'+':''}${fd}f</div><div style="font-size:10px;color:${md>0?'#1D9E75':md<0?'#E24B4A':'#444'}">${md>0?'+':''}${md}m</div></div>`;}).join('')}
+    </div>
+    <div style="background:#1a1208;border-radius:8px;padding:8px">
+      <div style="font-size:10px;color:#F5A623;font-weight:500;margin-bottom:4px">🔑 Key insight</div>
+      <div style="font-size:11px;color:#888;line-height:1.7">
+        แกนกลาง = ส่วนเดียวที่ BIA sensitive พอ<br>
+        นอนดี → แกนกลาง fat ลด สูงสุด −0.7/วัน<br>
+        นอนแย่ → แกนกลาง fat ขึ้น สูงสุด +0.4/วัน<br>
+        หยุดเทรน → แกนกลาง muscle ลด −0.4 ทันที
+      </div>
+    </div>
+  `;
+}
+
+// Body response log
+if (segLogEl && segD.length > 1) {
+  const dBadge = (v, inv) => {
+    if (v===0) return `<span style="color:#444">0</span>`;
+    const good = inv ? v<0 : v>0;
+    return `<span style="color:${good?'#1D9E75':'#E24B4A'}">${v>0?'+':''}${v}</span>`;
+  };
+  const rows = segD.map((d,i) => {
+    if (i===0) return null;
+    const prev = segD[i-1];
+    const fD = partsP.map(p => ({...p, d:+(d.sf[p.key]-prev.sf[p.key]).toFixed(1)}));
+    const mD = partsP.map(p => ({...p, d:+(d.sm[p.key]-prev.sm[p.key]).toFixed(1)}));
+    const maxFabs = Math.max(...fD.map(x=>Math.abs(x.d)));
+    const maxMabs = Math.max(...mD.map(x=>Math.abs(x.d)));
+    const totalF = +(d.fat - prev.fat).toFixed(1);
+    const totalM = +(d.muscle - prev.muscle).toFixed(1);
+    const bigF = fD.find(x=>Math.abs(x.d)===maxFabs&&x.d!==0);
+    const bigM = mD.find(x=>Math.abs(x.d)===maxMabs&&x.d!==0);
+    let insight = [];
+    if (bigF && bigF.d < 0) insight.push(`🔥 ${bigF.label} fat ${bigF.d}`);
+    if (bigF && bigF.d > 0) insight.push(`⬆️ ${bigF.label} fat +${bigF.d}`);
+    if (bigM && bigM.d > 0) insight.push(`💪 ${bigM.label} muscle +${bigM.d}`);
+    if (bigM && bigM.d < 0) insight.push(`📉 ${bigM.label} muscle ${bigM.d}`);
+    return {date:d.date, fD, mD, maxFabs, maxMabs, totalF, totalM, insight};
+  }).filter(Boolean).reverse();
+
+  segLogEl.innerHTML = rows.map(r=>`
+  <div style="border-bottom:0.5px solid #1f1f1f;padding:8px 0">
+    <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+      <span style="font-size:12px;color:#ccc;font-weight:500">${r.date}</span>
+      <span style="font-size:10px;color:#555">fat ${dBadge(r.totalF,true)} · muscle ${dBadge(r.totalM,false)}</span>
+    </div>
+    <div style="font-size:10px;color:#F5A623;margin-bottom:6px">${r.insight.join('  ')||'ทรงตัว'}</div>
+    <div style="margin-bottom:4px">
+      <div style="font-size:9px;color:#E24B4A;margin-bottom:2px">FAT Δ</div>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:2px">
+        ${r.fD.map(p=>`<div style="text-align:center;padding:3px;border-radius:4px;background:${Math.abs(p.d)===r.maxFabs&&p.d!==0?'#2a1212':'transparent'}">
+          <div style="font-size:9px;color:#444">${p.label}</div>
+          <div style="font-size:11px">${dBadge(p.d,true)}</div>
+        </div>`).join('')}
+      </div>
+    </div>
+    <div>
+      <div style="font-size:9px;color:#378ADD;margin-bottom:2px">MUSCLE Δ</div>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:2px">
+        ${r.mD.map(p=>`<div style="text-align:center;padding:3px;border-radius:4px;background:${Math.abs(p.d)===r.maxMabs&&p.d!==0?'#0d1f1a':'transparent'}">
+          <div style="font-size:9px;color:#444">${p.label}</div>
+          <div style="font-size:11px">${dBadge(p.d,false)}</div>
+        </div>`).join('')}
+      </div>
+    </div>
+  </div>`).join('');
+}
+
+const tbl = document.getElementById('tbl');
+tbl.innerHTML = `<thead><tr>${['วันที่','Fat','±เมื่อวาน','±7วัน','Muscle','BF%','Vis'].map(h=>`<th>${h}</th>`).join('')}</tr></thead>`;
+const tb = document.createElement('tbody');
+[...DATA].reverse().forEach((d, i) => {
+  const idx = DATA.length-1-i;
+  const pv  = idx > 0  ? DATA[idx-1] : null;
+  const p7v = idx >= 7 ? DATA[idx-7] : null;
+  const fmt = (cur, ref) => {
+    if (ref==null) return '<span class="gr">—</span>';
+    const v = +(cur-ref).toFixed(1);
+    const c = v<0?'g':v>0?'r':'gr';
+    return `<span class="${c}">${v>0?'+':''}${v}</span>`;
+  };
+  const td = s => `<td>${s}</td>`;
+  const tr = document.createElement('tr');
+  tr.innerHTML = td(d.date)+td(d.fat.toFixed(1))+td(fmt(d.fat,pv?.fat))+td(fmt(d.fat,p7v?.fat))+td(d.muscle.toFixed(1))+td(d.bf.toFixed(1)+'%')+td(d.vis);
+  tb.appendChild(tr);
+});
+tbl.appendChild(tb);
+</script>
+<main id="mobile-app" class="mobile-shell" aria-label="Jacky Body Tracker">
+  <div class="mobile-wrap">
+    <header class="m-topbar">
+      <div>
+        <p class="m-eyebrow">JACKY / BODY TRACKER</p>
+        <h1>ร่างกายวันนี้</h1>
+        <p class="m-stamp">สแกนล่าสุด 21 ส.ค. 2026 · 12:27</p>
+      </div>
+      <div class="m-score" aria-label="Body score">
+        <span>BODY SCORE</span>
+        <strong id="m-score-value">77</strong><small>/100</small>
+      </div>
+    </header>
+
+    <div class="m-dashboard">
+      <div class="m-main-column">
+        <section class="m-hero" id="m-hero">
+          <div class="m-kicker">LATEST BODY SCAN</div>
+          <div class="m-hero-main">
+            <div>
+              <div class="m-weight"><span id="m-weight-value">82.2</span><span> kg</span></div>
+              <p class="m-hero-label">น้ำหนักปัจจุบัน</p>
+            </div>
+            <div class="m-target">
+              <span>เป้าหมายน้ำหนัก</span>
+              <strong id="m-target-weight">73.7 kg</strong>
+              <small id="m-weight-left">เหลือ 8.5 kg</small>
+            </div>
+          </div>
+          <div class="m-progress" aria-label="ความคืบหน้าไปสู่เป้าหมาย"><i></i></div>
+          <div class="m-hero-foot">
+            <span id="m-fat-summary">Fat mass 18.7 kg</span>
+            <span class="m-good" id="m-fat-delta">−0.5 kg vs ครั้งก่อน</span>
+          </div>
+        </section>
+
+        <section class="m-section" aria-labelledby="m-key-heading">
+          <div class="m-section-head">
+            <div>
+              <p class="m-eyebrow">อ่านเร็ว</p>
+              <h2 id="m-key-heading">ตัวเลขล่าสุด</h2>
+            </div>
+            <span class="m-pill">ล่าสุด</span>
+          </div>
+          <div class="m-metrics">
+            <article class="m-metric">
+              <div class="m-metric-label"><i class="m-dot coral"></i>Fat mass</div>
+              <div class="m-metric-value"><span id="m-fat-value">18.7</span> <span>kg</span></div>
+              <div class="m-metric-foot good" id="m-fat-metric-delta">−0.5 kg จากครั้งก่อน</div>
+            </article>
+            <article class="m-metric">
+              <div class="m-metric-label"><i class="m-dot coral"></i>Body fat</div>
+              <div class="m-metric-value"><span id="m-bf-value">22.8</span><span>%</span></div>
+              <div class="m-metric-foot good" id="m-bf-delta">−0.4% จากครั้งก่อน</div>
+            </article>
+            <article class="m-metric">
+              <div class="m-metric-label"><i class="m-dot"></i>Muscle mass</div>
+              <div class="m-metric-value"><span id="m-muscle-value">59.2</span> <span>kg</span></div>
+              <div class="m-metric-foot" id="m-muscle-delta">−0.1 kg จากครั้งก่อน · รักษาระดับ</div>
+            </article>
+          </div>
+        </section>
+
+        <section class="m-section" aria-labelledby="m-trend-heading">
+          <div class="m-section-head">
+            <div>
+              <p class="m-eyebrow">อ่านแนวโน้ม</p>
+              <h2 id="m-trend-heading">ทิศทางที่กำลังไป</h2>
+              <p class="m-section-note">แสดง 24 ครั้งล่าสุด · ค่า BIA อาจแกว่งตามน้ำและการพักผ่อน</p>
+            </div>
+            <span class="m-pill">Fat ↓</span>
+          </div>
+          <div class="m-chart-card">
+            <div class="m-chart-title">Fat mass <span>kg</span></div>
+            <div class="m-chart"><canvas id="m-fat-chart" aria-label="กราฟ Fat mass"></canvas></div>
+            <div class="m-chart-title">Muscle mass <span>kg</span></div>
+            <div class="m-chart"><canvas id="m-muscle-chart" aria-label="กราฟ Muscle mass"></canvas></div>
+          </div>
+        </section>
+
+        <section class="m-section" aria-labelledby="m-segment-heading">
+          <div class="m-section-head">
+            <div>
+              <p class="m-eyebrow">สแกนล่าสุด</p>
+              <h2 id="m-segment-heading">รายส่วนของร่างกาย</h2>
+              <p class="m-section-note">เทียบกับช่วงมาตรฐานในรายงาน</p>
+            </div>
+            <span class="m-pill">5 จุด</span>
+          </div>
+          <div id="m-segment-grid" class="m-segment-grid"></div>
+        </section>
+      </div>
+
+      <div class="m-side-column">
+        <section class="m-section" aria-labelledby="m-report-heading">
+          <div class="m-section-head">
+            <div>
+              <p class="m-eyebrow">รายงาน Fitdays</p>
+              <h2 id="m-report-heading">องค์ประกอบร่างกาย</h2>
+            </div>
+          </div>
+          <div id="m-report-grid" class="m-report-grid"></div>
+        </section>
+
+        <section class="m-section" aria-labelledby="m-indicator-heading">
+          <div class="m-section-head">
+            <div>
+              <p class="m-eyebrow">สัญญาณประกอบ</p>
+              <h2 id="m-indicator-heading">ตัวชี้วัดอื่น</h2>
+            </div>
+          </div>

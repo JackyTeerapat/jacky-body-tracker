@@ -2,38 +2,58 @@
   const S = window.__JACKY_TRACKER__;
   if (!S?.DATA?.length) return;
 
-  const D = S.DATA.filter(x => x?.isoDate).slice().sort((a,b) => String(a.measuredAt || a.isoDate).localeCompare(String(b.measuredAt || b.isoDate)));
-  const latest = D.at(-1), MS = 864e5;
+  const D = S.DATA
+    .filter(x => x?.isoDate)
+    .slice()
+    .sort((a,b) => String(a.measuredAt || a.isoDate).localeCompare(String(b.measuredAt || b.isoDate)));
+
+  const latest = D.at(-1);
+  const MS = 864e5;
   const M = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
   const GOOD = '#147d7a', BAD = '#c26453', NEUTRAL = '#718084';
+
   const dt = s => new Date(`${s}T00:00:00Z`);
-  const sh = (d,n) => new Date(d.getTime() + n*MS);
+  const sh = (d,n) => new Date(d.getTime()+n*MS);
   const iso = d => d.toISOString().slice(0,10);
-  const avg = a => { const n=a.map(Number).filter(Number.isFinite); return n.length ? n.reduce((s,x)=>s+x,0)/n.length : null; };
+  const avg = a => {
+    const n=a.map(Number).filter(Number.isFinite);
+    return n.length ? n.reduce((s,x)=>s+x,0)/n.length : null;
+  };
   const f1 = x => Number.isFinite(+x) ? (+x).toFixed(1) : '—';
-  const sd = v => { const d=typeof v==='string'?dt(v):v; return Number.isNaN(d.getTime())?'—':`${d.getUTCDate()} ${M[d.getUTCMonth()]}`; };
-  const startWeek = d => sh(d,-(d.getUTCDay()===0?6:d.getUTCDay()-1));
+  const sd = v => {
+    const d=typeof v==='string' ? dt(v) : v;
+    return Number.isNaN(d.getTime()) ? '—' : `${d.getUTCDate()} ${M[d.getUTCMonth()]}`;
+  };
+  const startWeek = d => sh(d,-(d.getUTCDay()===0 ? 6 : d.getUTCDay()-1));
+
+  function localTodayAsUTC(){
+    const n=new Date();
+    return new Date(Date.UTC(n.getFullYear(),n.getMonth(),n.getDate()));
+  }
 
   function meta(c,p,lowerBetter){
-    if(!Number.isFinite(c)||!Number.isFinite(p)) return {delta:null,pct:null,arrow:'→',cls:'neutral'};
-    const delta=c-p, pct=p ? delta/p*100 : null, arrow=delta>0?'↑':delta<0?'↓':'→';
+    if(!Number.isFinite(c) || !Number.isFinite(p)) return {delta:null,pct:null,arrow:'→',cls:'neutral'};
+    const delta=c-p, pct=p ? delta/p*100 : null;
+    const arrow=delta>0 ? '↑' : delta<0 ? '↓' : '→';
     const good=lowerBetter ? delta<0 : delta>0;
     const bad=lowerBetter ? delta>0 : delta<0;
-    return {delta,pct,arrow,cls:Math.abs(delta)<1e-9?'neutral':good?'good':bad?'bad':'neutral'};
+    return {delta,pct,arrow,cls:Math.abs(delta)<1e-9 ? 'neutral' : good ? 'good' : bad ? 'bad' : 'neutral'};
   }
 
   function currentWeek(){
     const ld=dt(latest.isoDate), start=startWeek(ld), end=sh(start,6);
-    const current=D.filter(r=>r.isoDate>=iso(start)&&r.isoDate<=latest.isoDate);
-    const elapsed=Math.round((ld-start)/MS)+1;
-    return {start,end,current,left:Math.max(0,7-elapsed)};
+    const current=D.filter(r=>r.isoDate>=iso(start) && r.isoDate<=latest.isoDate);
+    const today=localTodayAsUTC();
+    const clock=today>=start && today<=end && today>=ld ? today : ld;
+    const left=Math.max(0,Math.round((end-clock)/MS));
+    return {start,end,current,left};
   }
 
   function latestClosedWeek(){
     const ld=dt(latest.isoDate);
     const end=ld.getUTCDay()===0 ? ld : sh(startWeek(ld),-1);
     const start=sh(end,-6);
-    return {start,end,rows:D.filter(r=>r.isoDate>=iso(start)&&r.isoDate<=iso(end))};
+    return {start,end,rows:D.filter(r=>r.isoDate>=iso(start) && r.isoDate<=iso(end))};
   }
 
   function weeklySeries(key){
@@ -46,7 +66,10 @@
       if(!groups.has(k)) groups.set(k,[]);
       groups.get(k).push(r);
     });
-    return [...groups.entries()].sort((a,b)=>a[0].localeCompare(b[0])).map(([end,rows])=>({end,value:avg(rows.map(x=>x[key]))})).filter(x=>Number.isFinite(x.value));
+    return [...groups.entries()]
+      .sort((a,b)=>a[0].localeCompare(b[0]))
+      .map(([end,rows])=>({end,value:avg(rows.map(x=>x[key]))}))
+      .filter(x=>Number.isFinite(x.value));
   }
 
   function trendPerWeek(key){
@@ -54,29 +77,32 @@
     if(s.length<2) return null;
     const n=s.length, xm=(n-1)/2, ym=avg(s.map(x=>x.value));
     let num=0,den=0;
-    s.forEach((p,i)=>{ num+=(i-xm)*(p.value-ym); den+=(i-xm)*(i-xm); });
+    s.forEach((p,i)=>{
+      num+=(i-xm)*(p.value-ym);
+      den+=(i-xm)*(i-xm);
+    });
     return den ? num/den : null;
   }
 
   function etaText(key,remain,mode){
-    if(!Number.isFinite(remain)||remain<=0.05) return 'ถึงเป้าหมายแล้ว';
+    if(!Number.isFinite(remain)) return 'ข้อมูลยังไม่พอ';
+    if(remain<=0.05) return 'ถึงเป้าหมายแล้ว';
     const slope=trendPerWeek(key);
-    const favorable=mode==='lower' ? -(slope??0) : (slope??0);
-    if(!Number.isFinite(favorable)||favorable<=0.01) return 'ยังประเมินเวลาไม่ได้จากแนวโน้มล่าสุด';
+    const favorable=mode==='lower' ? -(slope ?? 0) : (slope ?? 0);
+    if(!Number.isFinite(favorable) || favorable<=0.01) return 'ยังประเมินเวลาไม่ได้จากแนวโน้มล่าสุด';
     const weeks=remain/favorable;
-    if(!Number.isFinite(weeks)||weeks>260) return 'ยังประเมินเวลาไม่ได้จากแนวโน้มล่าสุด';
+    if(!Number.isFinite(weeks) || weeks>260) return 'ยังประเมินเวลาไม่ได้จากแนวโน้มล่าสุด';
     if(weeks<8) return `คาดว่าอีกประมาณ ${Math.max(1,Math.round(weeks))} สัปดาห์`;
     const months=weeks/4.345;
     if(months<18) return `คาดว่าอีกประมาณ ${Math.max(1,Math.round(months))} เดือน`;
-    const years=months/12;
-    return `คาดว่าอีกประมาณ ${years.toFixed(1)} ปี`;
+    return `คาดว่าอีกประมาณ ${(months/12).toFixed(1)} ปี`;
   }
 
   function deltaHtml(c,p,lower,unit,bf=false){
     const m=meta(c,p,lower);
     if(m.delta==null) return '';
     const primary=bf ? `${Math.abs(m.delta).toFixed(2)} จุด` : `${Math.abs(m.delta).toFixed(2)} ${unit}`;
-    const rel=Number.isFinite(m.pct)?` · ${Math.abs(m.pct).toFixed(1)}%`:'';
+    const rel=Number.isFinite(m.pct) ? ` · ${Math.abs(m.pct).toFixed(1)}%` : '';
     return `<em class="s-preview-pill ${m.cls}">${m.arrow} ${primary}${rel}</em>`;
   }
 
@@ -104,7 +130,9 @@
       .s-this-week-metric small{display:block;color:#617579;font-size:9px;font-weight:850}
       .s-this-week-metric strong{display:block;margin:3px 0 5px;color:#182326;font-size:16px;line-height:1.05;font-weight:900}
       .s-preview-pill{display:inline-block;padding:3px 7px;border-radius:999px;font-size:9px;line-height:1.15;font-style:normal;font-weight:850;white-space:nowrap}
-      .s-preview-pill.good{color:${GOOD};background:#e8f7f5}.s-preview-pill.bad{color:${BAD};background:#fff0eb}.s-preview-pill.neutral{color:${NEUTRAL};background:#f1f4f3}
+      .s-preview-pill.good{color:${GOOD};background:#e8f7f5}
+      .s-preview-pill.bad{color:${BAD};background:#fff0eb}
+      .s-preview-pill.neutral{color:${NEUTRAL};background:#f1f4f3}
       .s-this-week-foot{margin-top:8px;color:#718084;font-size:8px}
 
       .s-goal-section-head{margin:0 2px 10px;padding:0 1px}
@@ -124,6 +152,7 @@
       .s-goal-progress-meta{display:flex;justify-content:space-between;gap:8px;margin-top:6px;color:#718084;font-size:8px;font-weight:700}
       .s-goal-progress-meta span:last-child{text-align:right}
       .s-goal-remaining-card.done strong{color:${GOOD}}
+      .s-goal-no-data{color:${NEUTRAL}!important}
 
       @media(max-width:650px){
         .s-this-week-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -139,18 +168,28 @@
   function labelWeeklyPerformance(){
     const card=document.querySelector('#summary-app .s-weekly-checkpoint');
     if(!card) return false;
+
     const label=card.querySelector('.s-weekly-head p');
     if(label) label.textContent='WEEKLY PERFORMANCE';
+
     const picker=card.querySelector('.s-checkpoint-picker');
     if(picker){
       let purpose=picker.querySelector('.s-weekly-purpose');
-      if(!purpose){ purpose=document.createElement('small'); purpose.className='s-weekly-purpose'; picker.appendChild(purpose); }
+      if(!purpose){
+        purpose=document.createElement('small');
+        purpose.className='s-weekly-purpose';
+        picker.appendChild(purpose);
+      }
       purpose.textContent='ผลสัปดาห์ที่ปิดแล้ว · เทียบกับสัปดาห์ก่อน';
     }
+
     const grid=card.querySelector('.s-weekly-grid');
     if(grid){
       const byName=new Map([...grid.children].map(el=>[el.querySelector('small')?.textContent?.trim(),el]));
-      ['Weight avg','Fat avg','BF avg','Muscle avg'].forEach(name=>{ const el=byName.get(name); if(el) grid.appendChild(el); });
+      ['Weight avg','Fat avg','BF avg','Muscle avg'].forEach(name=>{
+        const el=byName.get(name);
+        if(el) grid.appendChild(el);
+      });
     }
     return true;
   }
@@ -158,10 +197,10 @@
   function renderThisWeek(){
     const wrap=document.querySelector('#summary-app .summary-wrap');
     const checkpoint=wrap?.querySelector('.s-weekly-checkpoint');
-    if(!wrap||!checkpoint) return false;
+    if(!wrap || !checkpoint) return false;
 
     const W=currentWeek(), P=latestClosedWeek();
-    const A=(rows,k)=>avg(rows.map(x=>x[k]));
+    const A=(rows,key)=>avg(rows.map(x=>x[key]));
     const metrics=[
       ['Weight avg','weight','kg',true,false],
       ['Fat avg','fat','kg',true,false],
@@ -170,21 +209,28 @@
     ];
 
     let preview=wrap.querySelector('.s-this-week-preview');
-    if(!preview){ preview=document.createElement('section'); preview.className='s-this-week-preview'; }
+    if(!preview){
+      preview=document.createElement('section');
+      preview.className='s-this-week-preview';
+    }
+
     preview.innerHTML=`
       <div class="s-this-week-head">
         <div class="s-this-week-copy">
           <p>THIS WEEK · PREVIEW</p>
           <h2>ค่าเฉลี่ยสัปดาห์นี้ · ${sd(W.start)}–${sd(latest.isoDate)}</h2>
-          <small>ยังไม่ปิดรอบ · เทียบ Weekly Performance ${sd(P.start)}–${sd(P.end)}</small>
+          <small>ยังไม่ปิดรอบ · เทียบกับ Weekly Performance ${sd(P.start)}–${sd(P.end)}</small>
         </div>
-        <span class="s-this-week-badge">${W.left?`เหลืออีก ${W.left} วัน`:'ครบสัปดาห์แล้ว'}</span>
+        <span class="s-this-week-badge">${W.left ? `เหลืออีก ${W.left} วัน` : 'ครบสัปดาห์แล้ว'}</span>
       </div>
-      <div class="s-this-week-grid">${metrics.map(([name,key,unit,lower,bf])=>{
-        const cur=A(W.current,key), prev=A(P.rows,key);
-        return `<div class="s-this-week-metric"><small>${name}</small><strong>${f1(cur)}${unit==='%'?'%':' kg'}</strong>${deltaHtml(cur,prev,lower,unit,bf)}</div>`;
-      }).join('')}</div>
+      <div class="s-this-week-grid">
+        ${metrics.map(([name,key,unit,lower,bf])=>{
+          const cur=A(W.current,key), prev=A(P.rows,key);
+          return `<div class="s-this-week-metric"><small>${name}</small><strong>${f1(cur)}${unit==='%'?'%':' kg'}</strong>${deltaHtml(cur,prev,lower,unit,bf)}</div>`;
+        }).join('')}
+      </div>
       <div class="s-this-week-foot">Preview ใช้ดูทิศทางระหว่างสัปดาห์ · การตัดสินใจหลักใช้ Weekly Performance หลังปิดวันอาทิตย์</div>`;
+
     checkpoint.insertAdjacentElement('beforebegin',preview);
     return true;
   }
@@ -193,54 +239,86 @@
     const wrap=document.querySelector('#summary-app .summary-wrap');
     const checkpoint=wrap?.querySelector('.s-weekly-checkpoint');
     const grid=wrap?.querySelector('.s-metric-goal-grid');
-    if(!wrap||!checkpoint||!grid) return false;
+    if(!wrap || !checkpoint || !grid) return false;
 
     const P=latestClosedWeek();
-    const A=k=>avg(P.rows.map(x=>x[k]));
+    const A=key=>avg(P.rows.map(x=>x[key]));
+
     let section=wrap.querySelector('.s-goal-progress-section');
-    if(!section){ section=document.createElement('section'); section.className='s-goal-progress-section'; }
+    if(!section){
+      section=document.createElement('section');
+      section.className='s-goal-progress-section';
+    }
     checkpoint.insertAdjacentElement('afterend',section);
 
     let head=section.querySelector('.s-goal-section-head');
-    if(!head){ head=document.createElement('div'); head.className='s-goal-section-head'; }
-    head.innerHTML=`<p>GOAL PROGRESS</p><h2>เหลืออีกเท่าไรถึงเป้าหมาย</h2><small>คำนวณจาก Weekly Performance เพื่อไม่ให้ค่ารายวันแกว่งเกินไป</small>`;
+    if(!head){
+      head=document.createElement('div');
+      head.className='s-goal-section-head';
+    }
+    head.innerHTML='<p>GOAL PROGRESS</p><h2>เหลืออีกเท่าไรถึงเป้าหมาย</h2><small>คำนวณจาก Weekly Performance เพื่อไม่ให้ค่ารายวันแกว่งเกินไป</small>';
     section.appendChild(head);
     section.appendChild(grid);
 
     const configs=[
-      {key:'weight',name:'น้ำหนัก',target:+S.WEIGHT_TARGET||73.7,mode:'lower',className:'weight'},
+      {key:'weight',name:'น้ำหนัก',target:+S.WEIGHT_TARGET || 73.7,mode:'lower',className:'weight'},
       {key:'fat',name:'ไขมัน',target:+S.TARGET,mode:'lower',className:'fat'},
       {key:'muscle',name:'กล้ามเนื้อ',target:+S.MUSCLE_TARGET,mode:'higher',className:'muscle'}
     ];
 
     let compact=section.querySelector('.s-goal-remaining-grid');
-    if(!compact){ compact=document.createElement('div'); compact.className='s-goal-remaining-grid'; }
+    if(!compact){
+      compact=document.createElement('div');
+      compact.className='s-goal-remaining-grid';
+    }
+
     compact.innerHTML=configs.map(cfg=>{
       const cur=A(cfg.key);
+
+      if(!Number.isFinite(cur) || !Number.isFinite(cfg.target)){
+        return `<div class="s-goal-remaining-card ${cfg.className}"><small>${cfg.name}</small><strong class="s-goal-no-data">ข้อมูลยังไม่พอ</strong><div class="s-goal-progress-track"><i class="s-goal-progress-fill" style="width:0%"></i></div><div class="s-goal-progress-meta"><span>—</span><span>รอ Weekly Performance</span></div></div>`;
+      }
+
       const remain=cfg.mode==='lower' ? cur-cfg.target : cfg.target-cur;
-      const done=Number.isFinite(remain)&&remain<=0.05;
-      const action=done?'ถึงเป้าแล้ว':cfg.mode==='lower'?'ลดอีก':'เพิ่มอีก';
-      const value=done?'✓':`${f1(Math.max(0,remain))} kg`;
+      const done=remain<=0.05;
+      const action=done ? 'ถึงเป้าแล้ว' : cfg.mode==='lower' ? 'ลดอีก' : 'เพิ่มอีก';
+      const value=done ? '✓' : `${f1(Math.max(0,remain))} kg`;
+
       const series=weeklySeries(cfg.key);
       const startValue=series[0]?.value;
       let progress=0;
-      if(Number.isFinite(startValue)&&Number.isFinite(cur)&&Number.isFinite(cfg.target)&&startValue!==cfg.target){
-        const raw=cfg.mode==='lower'?(startValue-cur)/(startValue-cfg.target):(cur-startValue)/(cfg.target-startValue);
+      if(Number.isFinite(startValue) && startValue!==cfg.target){
+        const raw=cfg.mode==='lower'
+          ? (startValue-cur)/(startValue-cfg.target)
+          : (cur-startValue)/(cfg.target-startValue);
         progress=Math.max(0,Math.min(1,raw));
       }
+
       const eta=etaText(cfg.key,Math.max(0,remain),cfg.mode);
       return `<div class="s-goal-remaining-card ${cfg.className}${done?' done':''}"><small>${cfg.name}</small><strong>${action} ${value}</strong><div class="s-goal-progress-track"><i class="s-goal-progress-fill" style="width:${(progress*100).toFixed(0)}%"></i></div><div class="s-goal-progress-meta"><span>ไปแล้ว ${(progress*100).toFixed(0)}%</span><span>${eta}</span></div></div>`;
     }).join('');
+
     section.appendChild(compact);
     return true;
   }
 
-  function apply(){ addStyle(); labelWeeklyPerformance(); renderThisWeek(); setupGoalProgress(); }
+  function apply(){
+    addStyle();
+    labelWeeklyPerformance();
+    renderThisWeek();
+    setupGoalProgress();
+  }
+
   function start(){
     [280,760,1500].forEach(ms=>setTimeout(apply,ms));
     document.addEventListener('click',e=>{
-      if(e.target.closest?.('#summary-app .s-weekly-checkpoint')) [90,280].forEach(ms=>setTimeout(apply,ms));
+      if(e.target.closest?.('#summary-app .s-weekly-checkpoint')){
+        [90,280].forEach(ms=>setTimeout(apply,ms));
+      }
     });
   }
-  document.readyState==='loading'?document.addEventListener('DOMContentLoaded',start,{once:true}):start();
+
+  document.readyState==='loading'
+    ? document.addEventListener('DOMContentLoaded',start,{once:true})
+    : start();
 })();

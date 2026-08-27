@@ -10,15 +10,45 @@
   <main><div><strong>กำลังเปิด Jacky Body Tracker…</strong><p>โหลดข้อมูลประวัติการสแกน</p></div></main>
   <script>
     const files=["assets/source/page-000.html","assets/source/page-001.html","assets/source/page-002.html","assets/source/page-003.html","assets/source/page-004.html","assets/source/page-025.html","assets/source/page-026.html","assets/source/page-005.html","assets/source/page-006.html","assets/source/page-007.html","assets/source/page-008.html","assets/source/page-009.html","assets/source/page-010.html","assets/source/page-011.html","assets/source/page-012.html","assets/source/page-013.html","assets/source/page-014.html","assets/source/page-015.html","assets/source/page-016.html","assets/source/page-017.html","assets/source/page-018.html","assets/source/page-019.html","assets/source/page-020.html","assets/source/page-021.html","assets/source/page-022.html","assets/source/page-023.html","assets/source/page-024.html"];
-    Promise.all(files.map(async file => {
-      const response = await fetch(file, { cache: 'no-cache' });
+    const readText = async (file, cache = 'default') => {
+      const response = await fetch(file, { cache });
       if (!response.ok) throw new Error(file);
       return response.text();
-    })).then(parts => {
+    };
+    Promise.all([
+      Promise.all(files.map(file => readText(file))),
+      readText('data/scans.ndjson', 'no-cache').catch(() => '')
+    ]).then(([parts, scanText]) => {
+      const extraScans = String(scanText)
+        .split(/\r?\n/)
+        .map(line => line.trim())
+        .filter(Boolean)
+        .map(line => JSON.parse(line));
+
+      let source = parts.join('');
+      if (extraScans.length) {
+        const targetPos = source.indexOf('const TARGET');
+        const closePos = source.lastIndexOf('];', targetPos);
+        if (targetPos < 0 || closePos < 0) throw new Error('Cannot locate DATA tail');
+        const before = source.slice(0, closePos).replace(/\s*$/, '');
+        const after = source.slice(closePos);
+        source = before + ',\n  ' + extraScans.map(scan => JSON.stringify(scan)).join(',\n  ') + '\n' + after;
+      }
+
+      source = source.replace(
+        /const\s+LATEST_DATE\s*=\s*'[^']*'\s*;/,
+        "const LATEST_DATE = DATA[DATA.length - 1]?.isoDate || '';"
+      );
+      source = source.replace(
+        '</body>',
+        '<script src="assets/runtime-overrides.js"></' + 'script></body>'
+      );
+
       document.open();
-      document.write(parts.join(''));
+      document.write(source);
       document.close();
-    }).catch(() => {
+    }).catch(error => {
+      console.error(error);
       document.body.innerHTML='<main><div><strong>เปิดข้อมูลไม่สำเร็จ</strong><p>กรุณาลองรีเฟรชอีกครั้ง</p></div></main>';
     });
   </script>

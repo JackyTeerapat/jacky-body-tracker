@@ -54,11 +54,11 @@
   }
 
   function selectedRange(){ return +document.querySelector('#summary-app .s-range-controls button[aria-pressed="true"]')?.dataset.range || 7; }
-  function labelFor(r){ if(r===1)return'ครั้งก่อน'; if(r===7)return'สัปดาห์นี้'; if(r===30)return'เดือนนี้'; if(r>=350&&r<1000)return'ปีนี้'; if(r>=150&&r<350)return'6 เดือน'; return'ตั้งแต่เริ่ม'; }
+  function labelFor(r){ if(r===1)return'ครั้งก่อน'; if(r===7)return'สัปดาห์'; if(r===30)return'เดือนนี้'; if(r>=350&&r<1000)return'ปีนี้'; if(r>=150&&r<350)return'6 เดือน'; return'ตั้งแต่เริ่ม'; }
   function renameRangeLabels(){
     const root=document.querySelector('#summary-app'); if(!root)return;
     root.querySelectorAll('.s-range-controls button').forEach(b=>{ const r=+b.dataset.range; if(Number.isFinite(r)) b.textContent=labelFor(r); });
-    const map={'1 วัน':'ครั้งก่อน','7 วัน':'สัปดาห์นี้','สัปดาห์':'สัปดาห์นี้','30 วัน':'เดือนนี้','1 ปี':'ปีนี้'};
+    const map={'1 วัน':'ครั้งก่อน','7 วัน':'สัปดาห์','สัปดาห์นี้':'สัปดาห์','30 วัน':'เดือนนี้','1 ปี':'ปีนี้'};
     const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT); const nodes=[];
     while(w.nextNode()){ const t=w.currentNode.nodeValue?.trim(); if(map[t]) nodes.push([w.currentNode,map[t]]); }
     nodes.forEach(([n,v])=>n.nodeValue=n.nodeValue.replace(n.nodeValue.trim(),v));
@@ -70,8 +70,8 @@
       const pair=D.slice(-2); return {mode:'pair',current:pair.slice(-1),previous:pair.slice(0,1),chartRows:pair,title:'ผลล่าสุดเทียบครั้งก่อน',compare:'ผลวัดครั้งก่อน → ผลล่าสุด'};
     }
     if(r===7){
-      const cs=startWeek(ld), ce=ld, ps=sh(cs,-7), pe=sh(cs,-1);
-      return {mode:'avg',current:rowsBetween(cs,ce),previous:rowsBetween(ps,pe),chartRows:rowsBetween(cs,ce),title:'ค่าเฉลี่ยสัปดาห์นี้',compare:`${sd(cs)}–${sd(ce)} เทียบ ${sd(ps)}–${sd(pe)}`};
+      const ce=sh(startWeek(ld),-1), cs=sh(ce,-6), pe=sh(ce,-7), ps=sh(pe,-6);
+      return {mode:'avg',current:rowsBetween(cs,ce),previous:rowsBetween(ps,pe),chartRows:rowsBetween(cs,ce),title:'ค่าเฉลี่ยรายสัปดาห์',compare:`${sd(cs)}–${sd(ce)} เทียบ ${sd(ps)}–${sd(pe)}`};
     }
     if(r===30){
       const cs=startMonth(ld), ce=ld, ps=addMonths(cs,-1), pe=addMonths(ce,-1);

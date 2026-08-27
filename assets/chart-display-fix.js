@@ -20,6 +20,16 @@
       chart.data.datasets = chart.data.datasets.filter(dataset => dataset.label !== 'เป้าหมาย');
     }
 
+    // Tooltip should describe only the line/point nearest to the pointer,
+    // instead of listing every dataset that shares the same date.
+    chart.options.interaction = { mode: 'nearest', intersect: false, axis: 'xy' };
+    chart.options.plugins = chart.options.plugins || {};
+    chart.options.plugins.tooltip = {
+      ...(chart.options.plugins.tooltip || {}),
+      mode: 'nearest',
+      intersect: false
+    };
+
     // Recalculate the Y scale from only the data that remains visible.
     const values = chart.data.datasets
       .flatMap(dataset => Array.isArray(dataset.data) ? dataset.data.map(point => Number(point?.y ?? point)) : [])
@@ -42,12 +52,12 @@
     const note = document.getElementById('s-range-note');
     if (!note) return;
     note.textContent = range >= 90
-      ? 'กราฟใช้ค่าเฉลี่ยรายสัปดาห์เพื่อลด noise'
+      ? 'ค่าเฉลี่ยรายสัปดาห์เพื่อลด noise'
       : range >= 30
-        ? 'จุดจาง = ค่าจริง · เส้นหลัก = ค่าเฉลี่ยเคลื่อนที่ 7 วัน'
+        ? 'เส้นบาง = ค่าจริง · เส้นหลัก = ค่าเฉลี่ย 7 วัน'
         : range >= 7
-          ? 'จุดจาง = ค่าจริง · เส้นหลัก = ค่าเฉลี่ยเคลื่อนที่ 3 วัน'
-          : 'จุดใหญ่ = ผลวัดล่าสุด';
+          ? 'เส้นบาง = ค่าจริง · เส้นหลัก = ค่าเฉลี่ย 3 วัน'
+          : 'ผลวัดล่าสุด';
   };
 
   const apply = () => {

@@ -36,7 +36,8 @@ validateData(combined, combined.at(-1).isoDate);
 const uiScripts = [
   'assets/chart-display-fix.js',
   'assets/calendar-performance.js',
-  'assets/layout-hierarchy.js'
+  'assets/layout-hierarchy.js',
+  'assets/trend-rebuild.js'
 ];
 
 for (const file of uiScripts) {
@@ -52,10 +53,13 @@ for (const file of uiScripts) {
 if (indexText.includes('assets/runtime-overrides.js')) {
   throw new Error('index.html must not load legacy assets/runtime-overrides.js');
 }
+if (indexText.indexOf('assets/trend-rebuild.js') < indexText.indexOf('assets/layout-hierarchy.js')) {
+  throw new Error('trend-rebuild.js must load after layout-hierarchy.js');
+}
 
 const chartBase = fs.readFileSync('assets/chart-display-fix.js', 'utf8');
-const calendar = fs.readFileSync('assets/calendar-performance.js', 'utf8');
 const layout = fs.readFileSync('assets/layout-hierarchy.js', 'utf8');
+const trend = fs.readFileSync('assets/trend-rebuild.js', 'utf8');
 
 if (chartBase.includes('Chart.getChart') || chartBase.includes('.s-range-controls')) {
   throw new Error('chart-display-fix.js must not own trend chart/range logic');
@@ -63,8 +67,8 @@ if (chartBase.includes('Chart.getChart') || chartBase.includes('.s-range-control
 if (layout.includes('Chart.getChart')) {
   throw new Error('layout-hierarchy.js must not own Chart.js rendering');
 }
-if (!calendar.includes('Chart.getChart')) {
-  throw new Error('calendar-performance.js must be the sole Chart.js trend owner');
+if (!trend.includes('new Chart') || !trend.includes('tr-fat') || !trend.includes('tr-muscle')) {
+  throw new Error('trend-rebuild.js must create isolated Fat/Muscle charts');
 }
 
 console.log('Tracker validation OK');
@@ -74,4 +78,4 @@ console.log(`NDJSON scans: ${extraScans.length}`);
 console.log(`Total scans: ${combined.length}`);
 console.log(`Latest: ${combined.at(-1).measuredAt}`);
 console.log(`Runtime latest date: ${combined.at(-1).isoDate}`);
-console.log('UI scripts: syntax OK / single chart owner');
+console.log('UI scripts: syntax OK / rebuilt trend charts loaded last');

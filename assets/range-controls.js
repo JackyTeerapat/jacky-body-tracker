@@ -47,23 +47,27 @@
         ?? null;
       if (!Number.isFinite(range)) return;
 
-      button.dataset.range = String(range);
-      button.dataset.trRange = String(range);
-      button.textContent = canonicalLabel(range);
-      button.disabled = false;
-      button.removeAttribute('disabled');
-      button.setAttribute('aria-disabled', 'false');
+      const value = String(range);
+      const label = canonicalLabel(range);
+      if (button.dataset.range !== value) button.dataset.range = value;
+      if (button.dataset.trRange !== value) button.dataset.trRange = value;
+      if (cleanLabel(button) !== label) button.textContent = label;
+      if (button.disabled) button.disabled = false;
+      if (button.hasAttribute('disabled')) button.removeAttribute('disabled');
+      if (button.getAttribute('aria-disabled') !== 'false') button.setAttribute('aria-disabled', 'false');
     });
 
     return buttons.length >= CANONICAL.length;
   }
 
   function start() {
-    normalize();
-    [80, 250, 700, 1500].forEach(ms => setTimeout(normalize, ms));
-    const observer = new MutationObserver(() => normalize());
-    observer.observe(document.body, { childList: true, subtree: true });
-    setTimeout(() => observer.disconnect(), 5000);
+    let attempts = 0;
+    const boot = () => {
+      attempts += 1;
+      if (!normalize() && attempts < 60) setTimeout(boot, 100);
+    };
+    boot();
+    [250, 800, 1800, 3200, 5200].forEach(ms => setTimeout(normalize, ms));
   }
 
   document.readyState === 'loading'

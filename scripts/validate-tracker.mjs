@@ -35,7 +35,6 @@ validateData(combined, combined.at(-1).isoDate);
 
 const uiScripts = [
   'assets/chart-display-fix.js',
-  'assets/calendar-performance.js',
   'assets/layout-hierarchy.js',
   'assets/trend-rebuild.js'
 ];
@@ -50,8 +49,11 @@ for (const file of uiScripts) {
   const count = indexText.split(file).length - 1;
   if (count !== 1) throw new Error(`index.html must load ${file} exactly once; found ${count}`);
 }
+if (indexText.includes('assets/calendar-performance.js')) {
+  throw new Error('index.html must not load legacy calendar-performance.js');
+}
 if (indexText.includes('assets/runtime-overrides.js')) {
-  throw new Error('index.html must not load legacy assets/runtime-overrides.js');
+  throw new Error('index.html must not load legacy runtime-overrides.js');
 }
 if (indexText.indexOf('assets/trend-rebuild.js') < indexText.indexOf('assets/layout-hierarchy.js')) {
   throw new Error('trend-rebuild.js must load after layout-hierarchy.js');
@@ -67,8 +69,17 @@ if (chartBase.includes('Chart.getChart') || chartBase.includes('.s-range-control
 if (layout.includes('Chart.getChart')) {
   throw new Error('layout-hierarchy.js must not own Chart.js rendering');
 }
-if (!trend.includes('new Chart') || !trend.includes('tr-root') || !trend.includes('s-fat-chart') || !trend.includes('s-muscle-chart')) {
-  throw new Error('trend-rebuild.js must render new charts and isolate legacy chart canvases');
+if (!trend.includes('dailySeries') || !trend.includes('weeklySeries') || !trend.includes('monthlySeries')) {
+  throw new Error('trend-rebuild.js must support daily, weekly and monthly aggregation');
+}
+if (!trend.includes("graphMode:'daily'") || !trend.includes("graphMode:'weekly'") || !trend.includes("graphMode:'monthly'")) {
+  throw new Error('trend-rebuild.js must map ranges to scaled graph granularity');
+}
+if (!trend.includes("render(1)")) {
+  throw new Error('trend-rebuild.js must default to previous-scan view');
+}
+if (trend.includes('forecast') || trend.includes('borderDash')) {
+  throw new Error('trend-rebuild.js must not draw forecast lines');
 }
 
 console.log('Tracker validation OK');
@@ -78,4 +89,4 @@ console.log(`NDJSON scans: ${extraScans.length}`);
 console.log(`Total scans: ${combined.length}`);
 console.log(`Latest: ${combined.at(-1).measuredAt}`);
 console.log(`Runtime latest date: ${combined.at(-1).isoDate}`);
-console.log('UI scripts: syntax OK / rebuilt trend charts loaded last');
+console.log('Trend granularity: week/month=daily, 6M/year=weekly, since-start=monthly');

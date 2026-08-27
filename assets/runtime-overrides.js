@@ -1,8 +1,16 @@
 (() => {
-  const start = () => {
-    document.querySelectorAll('.s-verdict').forEach(el => el.remove());
-  };
-  document.readyState === 'loading'
-    ? document.addEventListener('DOMContentLoaded', start, { once: true })
-    : start();
+  const S=window.__JACKY_TRACKER__,MS=864e5;
+  const dt=s=>new Date(`${s}T00:00:00Z`),sh=(d,n)=>new Date(d.getTime()+n*MS),iso=d=>d.toISOString().slice(0,10);
+  const avg=a=>{const n=a.map(Number).filter(Number.isFinite);return n.length?n.reduce((s,x)=>s+x,0)/n.length:null;};
+  const cls=(metric,v)=>{if(!Number.isFinite(v)||Math.abs(v)<1e-9)return'jacky-neutral';const lower=['Weight','Fat Mass','Body Fat'].includes(metric),higher=['Muscle Mass','Skeletal Muscle'].includes(metric);if(!lower&&!higher)return'jacky-neutral';return(lower?v<0:v>0)?'jacky-good':'jacky-bad';};
+  const paint=(el,c)=>{if(!el)return;el.classList.remove('jacky-good','jacky-bad','jacky-neutral','good','bad','neutral');el.classList.add(c);el.style.fontWeight='800';};
+  const parse=t=>{const m=String(t).replace(/,/g,'').match(/([+−-])\s*(\d+(?:\.\d+)?)/);return m?(m[1]==='+'?1:-1)*+m[2]:null;};
+  function data(){if(!S?.DATA?.length)return null;return S.DATA.filter(x=>x?.isoDate).slice().sort((a,b)=>String(a.measuredAt||a.isoDate).localeCompare(String(b.measuredAt||b.isoDate)));}
+  function wtd(){const D=data();if(!D)return null;const l=D.at(-1),ld=dt(l.isoDate),back=ld.getUTCDay()===0?6:ld.getUTCDay()-1,start=sh(ld,-back),pe=sh(start,-1),ps=sh(pe,-6);return{D,current:D.filter(r=>r.isoDate>=iso(start)&&r.isoDate<=l.isoDate),previous:D.filter(r=>r.isoDate>=iso(ps)&&r.isoDate<=iso(pe))};}
+  function top(){const W=wtd(),cards=[...document.querySelectorAll('#summary-app .s-metric-goal-grid .s-metric-goal')].slice(0,3),cfg=[['weight',true],['fat',true],['muscle',false]];if(!W||cards.length<3)return;cards.forEach((card,i)=>{const [key,lower]=cfg[i],c=avg(W.current.map(x=>x[key])),p=avg(W.previous.map(x=>x[key])),el=card.querySelector('.s-metric-goal-top > em');if(!el||!Number.isFinite(c)||!Number.isFinite(p))return;const d=c-p,pc=p?d/p*100:null,a=d>0?'↑':d<0?'↓':'→',good=lower?d<0:d>0;el.textContent=`${a} ${Math.abs(d).toFixed(2)} kg${Number.isFinite(pc)?` · ${Math.abs(pc).toFixed(1)}%`:''}`;paint(el,Math.abs(d)<1e-9?'jacky-neutral':good?'jacky-good':'jacky-bad');});}
+  function bf(){const card=document.querySelector('#summary-app .s-weekly-checkpoint'),active=card?.querySelector('.s-checkpoint-option.active[data-week]'),el=card?.querySelector('.s-weekly-grid > div:nth-child(2) em'),D=data();if(!active||!el||!D)return;const e=dt(active.dataset.week),s=sh(e,-6),pe=sh(e,-7),ps=sh(pe,-6),c=avg(D.filter(r=>r.isoDate>=iso(s)&&r.isoDate<=iso(e)).map(x=>x.bf)),p=avg(D.filter(r=>r.isoDate>=iso(ps)&&r.isoDate<=iso(pe)).map(x=>x.bf));if(!Number.isFinite(c)||!Number.isFinite(p))return;const d=c-p,pc=p?d/p*100:null,a=d>0?'↑':d<0?'↓':'→';el.textContent=`${a} ${Math.abs(d).toFixed(2)} จุด${Number.isFinite(pc)?` · ${Math.abs(pc).toFixed(1)}%`:''}`;paint(el,d<0?'good':d>0?'bad':'neutral');}
+  function details(){const root=document.querySelector('#summary-app');if(!root)return;const names=['Weight','Fat Mass','Body Fat','Muscle Mass','Skeletal Muscle','Body Water'],w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT),labels=[];while(w.nextNode()){const t=w.currentNode.nodeValue?.trim();if(names.includes(t))labels.push([t,w.currentNode.parentElement]);}labels.forEach(([metric,start])=>{let row=start;for(let i=0;row&&i<6;i++,row=row.parentElement){if(!/\([+−-]\s*\d/.test(row.textContent||''))continue;[...row.querySelectorAll('*')].filter(n=>n.children.length===0&&/\([+−-]\s*\d/.test(n.textContent||'')).forEach(n=>paint(n,cls(metric,parse(n.textContent))));break;}});}
+  function apply(){document.querySelectorAll('.s-verdict').forEach(e=>e.remove());top();bf();details();}
+  function start(){[0,120,400,900,1700].forEach(ms=>setTimeout(apply,ms));document.addEventListener('click',e=>{if(e.target.closest?.('.s-checkpoint-option,.s-range-controls button'))[0,80,220].forEach(ms=>setTimeout(apply,ms));});}
+  document.readyState==='loading'?document.addEventListener('DOMContentLoaded',start,{once:true}):start();
 })();

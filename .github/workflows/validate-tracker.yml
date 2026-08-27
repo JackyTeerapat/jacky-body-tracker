@@ -5,8 +5,11 @@ on:
     branches: [main]
     paths:
       - 'index.html'
+      - 'data/scans.ndjson'
       - 'assets/source/**'
-      - 'assets/runtime-overrides.js'
+      - 'assets/chart-display-fix.js'
+      - 'assets/calendar-performance.js'
+      - 'assets/layout-hierarchy.js'
       - 'scripts/add-fitdays-scan.mjs'
       - 'scripts/tracker-lib.mjs'
       - 'scripts/validate-tracker.mjs'
@@ -14,8 +17,11 @@ on:
   pull_request:
     paths:
       - 'index.html'
+      - 'data/scans.ndjson'
       - 'assets/source/**'
-      - 'assets/runtime-overrides.js'
+      - 'assets/chart-display-fix.js'
+      - 'assets/calendar-performance.js'
+      - 'assets/layout-hierarchy.js'
       - 'scripts/add-fitdays-scan.mjs'
       - 'scripts/tracker-lib.mjs'
       - 'scripts/validate-tracker.mjs'
@@ -36,5 +42,5 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Validate tracker source and legacy scan history
+      - name: Validate tracker data and UI scripts
         run: node scripts/validate-tracker.mjs

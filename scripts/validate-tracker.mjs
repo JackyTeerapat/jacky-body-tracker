@@ -67,8 +67,8 @@ if (chartBase.includes('Chart.getChart') || chartBase.includes('.s-range-control
 if (layout.includes('Chart.getChart')) {
   throw new Error('layout-hierarchy.js must not own Chart.js rendering');
 }
-if (!trend.includes('new Chart') || !trend.includes('tr-fat') || !trend.includes('tr-muscle')) {
-  throw new Error('trend-rebuild.js must create isolated Fat/Muscle charts');
+if (!trend.includes('new Chart') || !trend.includes('tr-root') || !trend.includes('s-fat-chart') || !trend.includes('s-muscle-chart')) {
+  throw new Error('trend-rebuild.js must render new charts and isolate legacy chart canvases');
 }
 
 console.log('Tracker validation OK');

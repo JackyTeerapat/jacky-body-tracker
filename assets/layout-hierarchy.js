@@ -72,12 +72,21 @@
       .s-this-week-foot{margin-top:8px;color:#718084;font-size:8px}
 
       .s-goal-section-head{margin:0 2px 10px;padding:0 1px}
-      #summary-app .s-goal-progress-section .s-metric-goal-grid{margin:0!important}
-      #summary-app .s-goal-progress-section .s-metric-goal{box-shadow:none!important}
-      #summary-app .s-metric-goal-values .s-goal-official small{font-weight:850;color:#617579}
+      #summary-app .s-goal-progress-section .s-metric-goal-grid{display:none!important}
+      .s-goal-remaining-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+      .s-goal-remaining-card{padding:12px 13px;border:1px solid #e1e9e7;border-radius:13px;background:#fbfcfc;min-width:0}
+      .s-goal-remaining-card.fat{border-color:#f3d6cf;background:#fffaf8}
+      .s-goal-remaining-card.muscle{border-color:#d4e7ee;background:#f8fcfd}
+      .s-goal-remaining-card small{display:block;color:#617579;font-size:10px;font-weight:850}
+      .s-goal-remaining-card strong{display:block;margin-top:4px;color:#182326;font-size:20px;line-height:1.05;font-weight:950}
+      .s-goal-remaining-card.fat strong{color:${BAD}}
+      .s-goal-remaining-card.muscle strong{color:#2f86a2}
+      .s-goal-remaining-card span{display:block;margin-top:4px;color:#718084;font-size:8px;font-weight:700}
+      .s-goal-remaining-card.done strong{color:${GOOD}}
 
       @media(max-width:650px){
         .s-this-week-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+        .s-goal-remaining-grid{grid-template-columns:1fr}
         .s-this-week-head{align-items:flex-start}
         .s-this-week-copy h2,.s-goal-section-head h2{font-size:15px}
         .s-this-week-badge{font-size:8px}
@@ -151,38 +160,29 @@
     if(!section){ section=document.createElement('section'); section.className='s-goal-progress-section'; }
     checkpoint.insertAdjacentElement('afterend',section);
 
-    let head=wrap.querySelector('.s-goal-section-head')||section.querySelector('.s-goal-section-head');
+    let head=section.querySelector('.s-goal-section-head');
     if(!head){ head=document.createElement('div'); head.className='s-goal-section-head'; }
-    head.innerHTML=`<p>GOAL PROGRESS</p><h2>ระยะถึงเป้าหมาย</h2><small>อิง Weekly Performance ล่าสุด · ${sd(P.start)}–${sd(P.end)}</small>`;
+    head.innerHTML=`<p>GOAL PROGRESS</p><h2>เหลืออีกเท่าไรถึงเป้าหมาย</h2><small>อิง Weekly Performance ล่าสุด · ${sd(P.start)}–${sd(P.end)}</small>`;
     section.appendChild(head);
     section.appendChild(grid);
 
     const configs=[
-      {key:'weight',target:+S.WEIGHT_TARGET||73.7,lower:true,remaining:v=>`ลดอีก ${f1(v-(+S.WEIGHT_TARGET||73.7))} kg`},
-      {key:'fat',target:+S.TARGET,lower:true,remaining:v=>`ลดอีก ${f1(v-(+S.TARGET))} kg`},
-      {key:'muscle',target:+S.MUSCLE_TARGET,lower:false,remaining:v=>`เพิ่มอีก ${f1((+S.MUSCLE_TARGET)-v)} kg`}
+      {key:'weight',name:'น้ำหนัก',target:+S.WEIGHT_TARGET||73.7,mode:'lower',className:'weight'},
+      {key:'fat',name:'ไขมัน',target:+S.TARGET,mode:'lower',className:'fat'},
+      {key:'muscle',name:'กล้ามเนื้อ',target:+S.MUSCLE_TARGET,mode:'higher',className:'muscle'}
     ];
 
-    [...grid.querySelectorAll('.s-metric-goal')].slice(0,3).forEach((card,i)=>{
-      const cfg=configs[i]; if(!cfg) return;
+    let compact=section.querySelector('.s-goal-remaining-grid');
+    if(!compact){ compact=document.createElement('div'); compact.className='s-goal-remaining-grid'; }
+    compact.innerHTML=configs.map(cfg=>{
       const cur=A(cfg.key);
-      const currentBox=card.querySelector('.s-metric-goal-values')?.children?.[0];
-      if(currentBox){
-        currentBox.classList.add('s-goal-official');
-        const small=currentBox.querySelector('small'),strong=currentBox.querySelector('strong');
-        if(small) small.textContent='Weekly avg';
-        if(strong) strong.innerHTML=`${f1(cur)} <i>kg</i>`;
-      }
-      const remain=card.querySelector('.s-metric-goal-foot strong');
-      if(remain&&Number.isFinite(cur)&&Number.isFinite(cfg.target)) remain.textContent=cfg.remaining(cur);
-      const startValue=+D[0]?.[cfg.key],bar=card.querySelector('.s-goal-bar i'),progressText=card.querySelector('.s-metric-goal-foot span');
-      if(Number.isFinite(startValue)&&Number.isFinite(cur)&&Number.isFinite(cfg.target)&&startValue!==cfg.target){
-        const raw=cfg.lower?(startValue-cur)/(startValue-cfg.target):(cur-startValue)/(cfg.target-startValue);
-        const progress=Math.max(0,Math.min(1,raw));
-        if(bar) bar.style.width=`${(progress*100).toFixed(0)}%`;
-        if(progressText) progressText.textContent=`ไปแล้ว ${(progress*100).toFixed(0)}%`;
-      }
-    });
+      const remain=cfg.mode==='lower' ? cur-cfg.target : cfg.target-cur;
+      const done=Number.isFinite(remain)&&remain<=0.05;
+      const action=done?'ถึงเป้าแล้ว':cfg.mode==='lower'?'ลดอีก':'เพิ่มอีก';
+      const value=done?'✓':`${f1(Math.max(0,remain))} kg`;
+      return `<div class="s-goal-remaining-card ${cfg.className}${done?' done':''}"><small>${cfg.name}</small><strong>${action} ${value}</strong><span>จาก Weekly Performance ล่าสุด</span></div>`;
+    }).join('');
+    section.appendChild(compact);
     return true;
   }
 

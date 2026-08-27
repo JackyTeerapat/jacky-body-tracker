@@ -3,7 +3,23 @@ name: Validate Body Tracker
 on:
   push:
     branches: [main]
+    paths:
+      - 'index.html'
+      - 'assets/source/**'
+      - 'assets/runtime-overrides.js'
+      - 'scripts/add-fitdays-scan.mjs'
+      - 'scripts/tracker-lib.mjs'
+      - 'scripts/validate-tracker.mjs'
+      - '.github/workflows/validate-tracker.yml'
   pull_request:
+    paths:
+      - 'index.html'
+      - 'assets/source/**'
+      - 'assets/runtime-overrides.js'
+      - 'scripts/add-fitdays-scan.mjs'
+      - 'scripts/tracker-lib.mjs'
+      - 'scripts/validate-tracker.mjs'
+      - '.github/workflows/validate-tracker.yml'
   workflow_dispatch:
 
 permissions:
@@ -20,5 +36,5 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Validate tracker source and scan history
+      - name: Validate tracker source and legacy scan history
         run: node scripts/validate-tracker.mjs

@@ -1,0 +1,32 @@
+name: Validate Append Scans
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'data/scans.ndjson'
+      - 'scripts/validate-scans.mjs'
+      - '.github/workflows/validate-scans.yml'
+  pull_request:
+    paths:
+      - 'data/scans.ndjson'
+      - 'scripts/validate-scans.mjs'
+      - '.github/workflows/validate-scans.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate append-only Fitdays data
+        run: node scripts/validate-scans.mjs

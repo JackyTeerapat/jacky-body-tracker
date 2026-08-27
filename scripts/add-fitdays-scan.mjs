@@ -1,21 +1,10 @@
 #!/usr/bin/env node
 import fs from 'node:fs';
 import path from 'node:path';
-import {
-  INDEX_PATH,
-  MAX_SOURCE_BYTES,
-  assertNewScan,
-  evaluateTracker,
-  findTailPart,
-  formatScan,
-  insertIntoTail,
-  loadSource,
-  nextSourceName,
-  parseLoaderFiles,
-  readUtf8,
-  updateLoaderIndex,
-  validateData,
-} from './tracker-lib.mjs';
+
+const DATA_FILE = path.resolve('data/scans.ndjson');
+const LEGACY_CUTOFF = '2026-08-27T11:04:56';
+const LEGACY_SOURCE_FILE = '1000076357.png';
 
 const inputPath = process.argv[2];
 if (!inputPath) {
@@ -24,40 +13,29 @@ if (!inputPath) {
 }
 
 const scan = JSON.parse(fs.readFileSync(path.resolve(inputPath), 'utf8'));
-const loaderFiles = parseLoaderFiles();
-const { parts, source } = loadSource(loaderFiles);
-const tracker = evaluateTracker(source);
-assertNewScan(scan, tracker.DATA);
+const required = ['isoDate', 'measuredAt', 'time', 'profileId', 'sourceFile', 'weight', 'fat', 'bf', 'muscle', 'daysFromStart'];
+for (const key of required) {
+  if (scan[key] === undefined || scan[key] === null || scan[key] === '') throw new Error(`Missing required field: ${key}`);
+}
+if (scan.profileId !== 'Jacky') throw new Error(`Rejected profileId: ${scan.profileId}`);
+if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(scan.measuredAt)) throw new Error('measuredAt must be YYYY-MM-DDTHH:mm:ss');
+if (scan.isoDate !== scan.measuredAt.slice(0, 10)) throw new Error('isoDate must match measuredAt date');
+if (scan.time !== scan.measuredAt.slice(11)) throw new Error('time must match measuredAt time');
 
-const tail = findTailPart(parts);
-const nextTailText = insertIntoTail(tail.text, scan);
+const raw = fs.existsSync(DATA_FILE) ? fs.readFileSync(DATA_FILE, 'utf8') : '';
+const existing = raw.split(/\r?\n/).map(line => line.trim()).filter(Boolean).map(JSON.parse);
+const latest = existing.at(-1);
 
-if (Buffer.byteLength(nextTailText, 'utf8') <= MAX_SOURCE_BYTES) {
-  fs.writeFileSync(tail.abs, nextTailText, 'utf8');
-  console.log(`Updated ${tail.rel}`);
-} else {
-  // Only when the current data-tail page is full: keep DATA open in the old page,
-  // create a new source page for the new record + constants, and update loader order.
-  const targetPos = tail.text.search(/\bconst\s+TARGET\s*=/);
-  const closePos = tail.text.lastIndexOf('];', targetPos);
-  const prefix = tail.text.slice(0, closePos).replace(/\s*$/, '');
-  let suffix = tail.text.slice(closePos);
-  suffix = suffix.replace(/(\bconst\s+LATEST_DATE\s*=\s*)'[^']*'/, `$1'${scan.isoDate}'`);
-
-  const newRel = nextSourceName(loaderFiles);
-  const newAbs = path.resolve(newRel);
-  fs.mkdirSync(path.dirname(newAbs), { recursive: true });
-  fs.writeFileSync(tail.abs, `${prefix},\n`, 'utf8');
-  fs.writeFileSync(newAbs, `${formatScan(scan)}\n${suffix}`, 'utf8');
-
-  const indexText = readUtf8(INDEX_PATH);
-  fs.writeFileSync(INDEX_PATH, updateLoaderIndex(indexText, tail.rel, newRel), 'utf8');
-  console.log(`Split full tail: ${tail.rel} -> ${newRel}`);
+if (scan.measuredAt <= (latest?.measuredAt || LEGACY_CUTOFF)) {
+  throw new Error(`Scan must be newer than ${latest?.measuredAt || LEGACY_CUTOFF}`);
+}
+if (scan.measuredAt === LEGACY_CUTOFF || existing.some(item => item.measuredAt === scan.measuredAt)) {
+  throw new Error(`Duplicate measuredAt: ${scan.measuredAt}`);
+}
+if (scan.sourceFile === LEGACY_SOURCE_FILE || existing.some(item => item.sourceFile === scan.sourceFile)) {
+  throw new Error(`Duplicate sourceFile: ${scan.sourceFile}`);
 }
 
-// Re-read everything after mutation and fail immediately if the generated repo is invalid.
-const finalFiles = parseLoaderFiles();
-const finalSource = loadSource(finalFiles).source;
-const finalTracker = evaluateTracker(finalSource);
-validateData(finalTracker.DATA, finalTracker.LATEST_DATE);
-console.log(`OK: ${scan.measuredAt} / ${scan.sourceFile}`);
+fs.mkdirSync(path.dirname(DATA_FILE), {recursive: true});
+fs.appendFileSync(DATA_FILE, JSON.stringify(scan) + '\n', 'utf8');
+console.log(`Appended ${scan.measuredAt} / ${scan.sourceFile} to data/scans.ndjson`);

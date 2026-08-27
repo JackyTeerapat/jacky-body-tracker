@@ -30,11 +30,13 @@
       .s-checkpoint-menu{position:absolute;z-index:30;top:calc(100% + 6px);left:0;min-width:100%;max-height:240px;overflow:auto;padding:5px;border:1px solid #cfe1dd;border-radius:12px;background:#fff;box-shadow:0 12px 30px rgba(24,35,38,.12)}.s-checkpoint-menu[hidden]{display:none}
       .s-checkpoint-option{display:block;width:100%;padding:8px 10px;border:0;border-radius:9px;background:transparent;color:#34484c;font:700 12px/1.25 system-ui,sans-serif;text-align:left;cursor:pointer;white-space:nowrap}.s-checkpoint-option:hover,.s-checkpoint-option.active{background:#eaf7f5;color:${GOOD}}
       .s-weekly-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}.s-weekly-grid>div{padding:10px 11px;border:1px solid #edf2f0;border-radius:12px;background:#f9fbfa}
-      .s-weekly-grid small{display:block;color:#617579;font-size:10px;font-weight:850}.s-weekly-grid strong{display:block;margin:4px 0 3px;color:#182326;font-size:18px;line-height:1.05;font-weight:900}
+      .s-weekly-grid small{display:block;color:#617579;font-size:11px;font-weight:900}.s-weekly-grid strong{display:block;margin:4px 0 3px;color:#182326;font-size:19px;line-height:1.05;font-weight:900}
       .s-weekly-grid em{display:inline-block;padding:3px 6px;border-radius:7px;font-size:9px;font-style:normal;font-weight:850}.s-weekly-grid em.good{color:${GOOD};background:#e8f7f5}.s-weekly-grid em.bad{color:${BAD};background:#fff0eb}.s-weekly-grid em.neutral{color:${NEUTRAL};background:#f1f4f3}
       .s-weekly-foot{display:flex;justify-content:space-between;gap:10px;margin-top:9px;padding-top:8px;border-top:1px solid #edf2f0;color:#718084;font-size:8px}.s-weekly-foot strong{color:${GOOD};white-space:nowrap}
+      .s-wtd-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:2px 2px 9px;padding:0 1px}.s-wtd-copy p{margin:0 0 3px;color:${GOOD};font-size:9px;font-weight:900;letter-spacing:.12em}.s-wtd-copy h2{margin:0;color:#182326;font-size:17px;line-height:1.15;letter-spacing:-.02em}.s-wtd-copy small{display:block;margin-top:4px;color:#718084;font-size:9px}.s-wtd-badge{flex:0 0 auto;padding:6px 9px;border-radius:999px;background:#e8f7f5;color:${GOOD};font-size:9px;font-weight:850;white-space:nowrap}
+      .s-metric-goal-values .s-wtd-current small{font-weight:850;color:#617579}.s-metric-goal-top>em.jacky-good,.s-metric-goal-top>em.jacky-bad,.s-metric-goal-top>em.jacky-neutral{font-weight:850}
       .s-chart-hover-readout{height:18px;margin:0 0 2px;text-align:right;color:#617579;font-size:10px;font-weight:700;line-height:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-      @media(max-width:620px){.s-weekly-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.s-weekly-foot{display:block}.s-weekly-foot strong{display:block;margin-top:4px}.s-checkpoint-trigger{min-width:0;max-width:100%;font-size:15px}}
+      @media(max-width:620px){.s-weekly-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.s-weekly-foot{display:block}.s-weekly-foot strong{display:block;margin-top:4px}.s-checkpoint-trigger{min-width:0;max-width:100%;font-size:15px}.s-wtd-head{align-items:flex-start}.s-wtd-copy h2{font-size:15px}.s-wtd-badge{font-size:8px}}
     `; document.head.appendChild(s);
   }
 
@@ -45,10 +47,43 @@
     const e=h.querySelector('.s-eyebrow'),t=h.querySelector('h1'),d=h.querySelector('.s-date'); if(e)e.textContent='JACKY'; if(t)t.textContent='BODY TRACKER'; if(d)d.textContent=`อัปเดตล่าสุด · ${stamp}`;
   }
 
+  function currentWeek(){
+    const ld=dt(latest.isoDate),dow=ld.getUTCDay(),back=dow===0?6:dow-1,start=sh(ld,-back),end=sh(start,6),prevEnd=sh(start,-1),prevStart=sh(prevEnd,-6);
+    const current=D.filter(r=>r.isoDate>=iso(start)&&r.isoDate<=latest.isoDate),previous=D.filter(r=>r.isoDate>=iso(prevStart)&&r.isoDate<=iso(prevEnd));
+    const elapsed=Math.round((ld-start)/MS)+1,left=Math.max(0,7-elapsed);
+    return {start,end,current,previous,elapsed,left};
+  }
+
+  function setupWeekToDate(){
+    const grid=document.querySelector('#summary-app .s-metric-goal-grid'); if(!grid)return false;
+    const W=currentWeek(),A=(rows,k)=>avg(rows.map(x=>x[k]));
+    let head=grid.previousElementSibling?.classList?.contains('s-wtd-head')?grid.previousElementSibling:null;
+    if(!head){head=document.createElement('div');head.className='s-wtd-head';grid.insertAdjacentElement('beforebegin',head);}
+    head.innerHTML=`<div class="s-wtd-copy"><p>WEEK TO DATE</p><h2>ค่าเฉลี่ยสัปดาห์นี้ · ${sd(W.start)}–${sd(latest.isoDate)}</h2><small>วัดแล้ว ${W.current.length} ครั้ง · สัปดาห์ ${sd(W.start)}–${sd(W.end)}</small></div><span class="s-wtd-badge">${W.left?`เหลืออีก ${W.left} วัน`:'ครบสัปดาห์แล้ว'}</span>`;
+
+    const configs=[
+      {key:'weight',lower:true,target:+S.WEIGHT_TARGET||73.7,remaining:v=>`ลดอีก ${f1(v-(+S.WEIGHT_TARGET||73.7))} kg`},
+      {key:'fat',lower:true,target:+S.TARGET,remaining:v=>`ลดอีก ${f1(v-(+S.TARGET))} kg`},
+      {key:'muscle',lower:false,target:+S.MUSCLE_TARGET,remaining:v=>`เพิ่มอีก ${f1((+S.MUSCLE_TARGET)-v)} kg`}
+    ];
+    [...grid.querySelectorAll('.s-metric-goal')].slice(0,3).forEach((card,i)=>{
+      const cfg=configs[i]; if(!cfg)return;
+      const cur=A(W.current,cfg.key),prev=A(W.previous,cfg.key),m=meta(cur,prev,cfg.lower);
+      const currentBox=card.querySelector('.s-metric-goal-values')?.children?.[0];
+      if(currentBox){currentBox.classList.add('s-wtd-current');const small=currentBox.querySelector('small'),strong=currentBox.querySelector('strong');if(small)small.textContent='เฉลี่ย';if(strong)strong.innerHTML=`${f1(cur)} <i>kg</i>`;}
+      const trend=card.querySelector('.s-metric-goal-top > em');
+      if(trend){trend.textContent=m.delta==null?'สัปดาห์ก่อน —':`สัปดาห์ก่อน ${m.arrow} ${Math.abs(m.delta).toFixed(1)} kg`;trend.classList.remove('jacky-good','jacky-bad','jacky-neutral');trend.classList.add(m.cls==='good'?'jacky-good':m.cls==='bad'?'jacky-bad':'jacky-neutral');}
+      const remain=card.querySelector('.s-metric-goal-foot strong');if(remain&&Number.isFinite(cur)&&Number.isFinite(cfg.target))remain.textContent=cfg.remaining(cur);
+      const startValue=+D[0]?.[cfg.key],bar=card.querySelector('.s-goal-bar i'),progressText=card.querySelector('.s-metric-goal-foot span');
+      if(Number.isFinite(startValue)&&Number.isFinite(cur)&&Number.isFinite(cfg.target)&&startValue!==cfg.target){const raw=cfg.lower?(startValue-cur)/(startValue-cfg.target):(cur-startValue)/(cfg.target-startValue),progress=Math.max(0,Math.min(1,raw));if(bar)bar.style.width=`${(progress*100).toFixed(0)}%`;if(progressText)progressText.textContent=`ไปแล้ว ${(progress*100).toFixed(0)}%`;}
+    });
+    return true;
+  }
+
   const weekEnds=()=>{ const ld=dt(latest.isoDate),done=sh(ld,-ld.getUTCDay()),set=new Set(); D.forEach(r=>{const d=dt(r.isoDate),sun=sh(d,d.getUTCDay()?7-d.getUTCDay():0); if(sun<=done)set.add(iso(sun));}); return [...set].sort().reverse(); };
   const weekRows=end=>{const e=dt(end),s=sh(e,-6); return D.filter(r=>r.isoDate>=iso(s)&&r.isoDate<=end);};
   const weekLabel=end=>{const e=dt(end); return `${sd(sh(e,-6))}–${sd(e)} ${e.getUTCFullYear()}`;};
-  const metricDelta=(m,u,d=2,rel=true)=>m.delta==null?'<em class="neutral">—</em>':`<em class="${m.cls}">${m.arrow} ${sign(m.delta,d,u)}${rel&&Number.isFinite(m.pct)?` · ${sign(m.pct,1,'%')}`:''}</em>`;
+  const metricDelta=(m,u,d=2,rel=true)=>m.delta==null?'<em class="neutral">—</em>':`<em class="${m.cls}">${m.arrow} ${Math.abs(m.delta).toFixed(d)}${u}${rel&&Number.isFinite(m.pct)?` · ${Math.abs(m.pct).toFixed(1)}%`:''}</em>`;
 
   function renderCheckpoint(card,selected){
     const weeks=weekEnds(); if(!weeks.length){card.remove();return;} selected=weeks.includes(selected)?selected:weeks[0];
@@ -98,6 +133,6 @@
     document.querySelectorAll('body *').forEach(el=>{const t=el.textContent?.trim()||'';if(el.children.length||!/^ช่วงนี้\s*[+−-]/.test(t))return;let n=el.parentElement;for(let d=0;n&&d<5;d++,n=n.parentElement){const all=n.textContent||'';let metric='';if(all.includes('กล้ามเนื้อ'))metric='กล้ามเนื้อ';else if(all.includes('ไขมัน'))metric='ไขมัน';else if(all.includes('น้ำหนัก'))metric='น้ำหนัก';if(!metric)continue;const v=parseDelta(t);el.classList.remove('jacky-good','jacky-bad','jacky-neutral');el.classList.add(cls(metric,v));break;}});
   }
   function bind(){document.querySelectorAll('#summary-app .s-range-controls button').forEach(b=>{if(b.dataset.jackyBound)return;b.dataset.jackyBound='1';b.addEventListener('click',()=>[0,60,160].forEach(ms=>setTimeout(()=>{renamePrevious();patchCharts();semantic();},ms)));});}
-  function start(){addStyle();updateHeader();setupCheckpoint();renamePrevious();bind();semantic();let i=0;const go=()=>{i++;const ok=patchCharts();semantic();if(!ok&&i<15)setTimeout(go,100);};setTimeout(go,30);}
+  function start(){addStyle();updateHeader();setupCheckpoint();setupWeekToDate();renamePrevious();bind();semantic();let i=0;const go=()=>{i++;setupWeekToDate();const ok=patchCharts();semantic();if(!ok&&i<15)setTimeout(go,100);};setTimeout(go,30);}
   document.readyState==='loading'?document.addEventListener('DOMContentLoaded',start,{once:true}):start();
 })();

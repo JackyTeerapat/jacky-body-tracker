@@ -36,6 +36,42 @@
     return {start,end,rows:D.filter(r=>r.isoDate>=iso(start)&&r.isoDate<=iso(end))};
   }
 
+  function weeklySeries(key){
+    const last=latestClosedWeek().end;
+    const groups=new Map();
+    D.forEach(r=>{
+      const d=dt(r.isoDate), end=sh(startWeek(d),6);
+      if(end>last) return;
+      const k=iso(end);
+      if(!groups.has(k)) groups.set(k,[]);
+      groups.get(k).push(r);
+    });
+    return [...groups.entries()].sort((a,b)=>a[0].localeCompare(b[0])).map(([end,rows])=>({end,value:avg(rows.map(x=>x[key]))})).filter(x=>Number.isFinite(x.value));
+  }
+
+  function trendPerWeek(key){
+    const s=weeklySeries(key).slice(-4);
+    if(s.length<2) return null;
+    const n=s.length, xm=(n-1)/2, ym=avg(s.map(x=>x.value));
+    let num=0,den=0;
+    s.forEach((p,i)=>{ num+=(i-xm)*(p.value-ym); den+=(i-xm)*(i-xm); });
+    return den ? num/den : null;
+  }
+
+  function etaText(key,remain,mode){
+    if(!Number.isFinite(remain)||remain<=0.05) return 'ถึงเป้าหมายแล้ว';
+    const slope=trendPerWeek(key);
+    const favorable=mode==='lower' ? -(slope??0) : (slope??0);
+    if(!Number.isFinite(favorable)||favorable<=0.01) return 'ยังประเมินเวลาไม่ได้จากแนวโน้มล่าสุด';
+    const weeks=remain/favorable;
+    if(!Number.isFinite(weeks)||weeks>260) return 'ยังประเมินเวลาไม่ได้จากแนวโน้มล่าสุด';
+    if(weeks<8) return `คาดว่าอีกประมาณ ${Math.max(1,Math.round(weeks))} สัปดาห์`;
+    const months=weeks/4.345;
+    if(months<18) return `คาดว่าอีกประมาณ ${Math.max(1,Math.round(months))} เดือน`;
+    const years=months/12;
+    return `คาดว่าอีกประมาณ ${years.toFixed(1)} ปี`;
+  }
+
   function deltaHtml(c,p,lower,unit,bf=false){
     const m=meta(c,p,lower);
     if(m.delta==null) return '';
@@ -81,7 +117,12 @@
       .s-goal-remaining-card strong{display:block;margin-top:4px;color:#182326;font-size:20px;line-height:1.05;font-weight:950}
       .s-goal-remaining-card.fat strong{color:${BAD}}
       .s-goal-remaining-card.muscle strong{color:#2f86a2}
-      .s-goal-remaining-card span{display:block;margin-top:4px;color:#718084;font-size:8px;font-weight:700}
+      .s-goal-progress-track{height:7px;margin-top:10px;border-radius:999px;background:#e7efed;overflow:hidden}
+      .s-goal-progress-fill{display:block;height:100%;border-radius:999px;background:#31b8b0}
+      .s-goal-remaining-card.fat .s-goal-progress-fill{background:#ef7c67}
+      .s-goal-remaining-card.muscle .s-goal-progress-fill{background:#3c94b0}
+      .s-goal-progress-meta{display:flex;justify-content:space-between;gap:8px;margin-top:6px;color:#718084;font-size:8px;font-weight:700}
+      .s-goal-progress-meta span:last-child{text-align:right}
       .s-goal-remaining-card.done strong{color:${GOOD}}
 
       @media(max-width:650px){
@@ -162,7 +203,7 @@
 
     let head=section.querySelector('.s-goal-section-head');
     if(!head){ head=document.createElement('div'); head.className='s-goal-section-head'; }
-    head.innerHTML=`<p>GOAL PROGRESS</p><h2>เหลืออีกเท่าไรถึงเป้าหมาย</h2><small>อิง Weekly Performance ล่าสุด · ${sd(P.start)}–${sd(P.end)}</small>`;
+    head.innerHTML=`<p>GOAL PROGRESS</p><h2>เหลืออีกเท่าไรถึงเป้าหมาย</h2><small>คำนวณจาก Weekly Performance เพื่อไม่ให้ค่ารายวันแกว่งเกินไป</small>`;
     section.appendChild(head);
     section.appendChild(grid);
 
@@ -180,7 +221,15 @@
       const done=Number.isFinite(remain)&&remain<=0.05;
       const action=done?'ถึงเป้าแล้ว':cfg.mode==='lower'?'ลดอีก':'เพิ่มอีก';
       const value=done?'✓':`${f1(Math.max(0,remain))} kg`;
-      return `<div class="s-goal-remaining-card ${cfg.className}${done?' done':''}"><small>${cfg.name}</small><strong>${action} ${value}</strong><span>จาก Weekly Performance ล่าสุด</span></div>`;
+      const series=weeklySeries(cfg.key);
+      const startValue=series[0]?.value;
+      let progress=0;
+      if(Number.isFinite(startValue)&&Number.isFinite(cur)&&Number.isFinite(cfg.target)&&startValue!==cfg.target){
+        const raw=cfg.mode==='lower'?(startValue-cur)/(startValue-cfg.target):(cur-startValue)/(cfg.target-startValue);
+        progress=Math.max(0,Math.min(1,raw));
+      }
+      const eta=etaText(cfg.key,Math.max(0,remain),cfg.mode);
+      return `<div class="s-goal-remaining-card ${cfg.className}${done?' done':''}"><small>${cfg.name}</small><strong>${action} ${value}</strong><div class="s-goal-progress-track"><i class="s-goal-progress-fill" style="width:${(progress*100).toFixed(0)}%"></i></div><div class="s-goal-progress-meta"><span>ไปแล้ว ${(progress*100).toFixed(0)}%</span><span>${eta}</span></div></div>`;
     }).join('');
     section.appendChild(compact);
     return true;

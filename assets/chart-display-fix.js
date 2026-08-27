@@ -40,6 +40,7 @@
     const s = document.createElement('style');
     s.id = 'jacky-base-ui-style';
     s.textContent = `
+      #summary-app .s-verdict{display:none!important}
       .jacky-good{color:${GOOD}!important}.jacky-bad{color:${BAD}!important}.jacky-neutral{color:${NEUTRAL}!important}
       .s-weekly-checkpoint{margin:0 0 12px;padding:14px;border:1px solid #d8e4e1;border-radius:18px;background:#fff}
       .s-weekly-head{margin-bottom:11px}.s-weekly-head p{margin:0 0 4px;color:${GOOD};font-size:10px;font-weight:950;letter-spacing:.13em}
@@ -75,9 +76,10 @@
     const m = String(latest?.measuredAt || '').match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
     const stamp = m ? `${+m[3]} ${M[+m[2]-1]} ${m[1]} · ${m[4]}:${m[5]}` : `${sd(latest.isoDate)} ${String(latest.isoDate).slice(0,4)}`;
     const e = h.querySelector('.s-eyebrow'), t = h.querySelector('h1'), d = h.querySelector('.s-date');
-    if(e) e.textContent = 'JACKY';
-    if(t) t.textContent = 'BODY TRACKER';
-    if(d) d.textContent = `อัปเดตล่าสุด · ${stamp}`;
+    if(e && e.textContent !== 'JACKY') e.textContent = 'JACKY';
+    if(t && t.textContent !== 'BODY TRACKER') t.textContent = 'BODY TRACKER';
+    const dateText = `อัปเดตล่าสุด · ${stamp}`;
+    if(d && d.textContent !== dateText) d.textContent = dateText;
     return true;
   }
 
@@ -151,6 +153,7 @@
         <strong>${selected===weeks[0] ? `Checkpoint ถัดไป ${sd(sh(dt(weeks[0]),7))}` : 'กำลังดูย้อนหลัง'}</strong>
       </div>`;
 
+    card.dataset.jackyReady = '1';
     const tr = card.querySelector('.s-checkpoint-trigger');
     const menu = card.querySelector('.s-checkpoint-menu');
     tr?.addEventListener('click',e => {
@@ -163,12 +166,6 @@
       e.stopPropagation();
       renderCheckpoint(card,o.dataset.week);
     }));
-    document.addEventListener('click',() => {
-      if(tr?.isConnected && menu?.isConnected){
-        tr.setAttribute('aria-expanded','false');
-        menu.hidden = true;
-      }
-    },{once:true});
   }
 
   function setupCheckpoint(){
@@ -181,8 +178,10 @@
       card.className = 's-weekly-checkpoint';
       h.insertAdjacentElement('afterend',card);
     }
-    const active = card.querySelector('.s-checkpoint-option.active[data-week]')?.dataset.week;
-    renderCheckpoint(card,active || weekEnds()[0]);
+    if(card.dataset.jackyReady !== '1' || !card.querySelector('.s-weekly-grid')){
+      const active = card.querySelector('.s-checkpoint-option.active[data-week]')?.dataset.week;
+      renderCheckpoint(card,active || weekEnds()[0]);
+    }
     return true;
   }
 
@@ -227,15 +226,16 @@
   }
 
   function apply(){
-    document.querySelectorAll('.s-verdict').forEach(e=>e.remove());
     addStyle();
+    document.querySelectorAll('#summary-app .s-verdict').forEach(e=>e.remove());
     updateHeader();
     setupCheckpoint();
     paintDetails();
   }
 
   function start(){
-    [0,160,500,1100].forEach(ms=>setTimeout(apply,ms));
+    [0,100,250,500,900,1400,2200,3500,5200,7500].forEach(ms=>setTimeout(apply,ms));
+    window.addEventListener('load',()=>setTimeout(apply,50),{once:true});
     document.addEventListener('click',e=>{
       if(e.target.closest?.('.s-checkpoint-option')) [30,140].forEach(ms=>setTimeout(apply,ms));
     });

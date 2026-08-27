@@ -36,6 +36,7 @@ validateData(combined, combined.at(-1).isoDate);
 const uiScripts = [
   'assets/chart-display-fix.js',
   'assets/layout-hierarchy.js',
+  'assets/range-controls.js',
   'assets/trend-rebuild.js'
 ];
 
@@ -55,12 +56,16 @@ if (indexText.includes('assets/calendar-performance.js')) {
 if (indexText.includes('assets/runtime-overrides.js')) {
   throw new Error('index.html must not load legacy runtime-overrides.js');
 }
+if (indexText.indexOf('assets/range-controls.js') > indexText.indexOf('assets/trend-rebuild.js')) {
+  throw new Error('range-controls.js must load before trend-rebuild.js');
+}
 if (indexText.indexOf('assets/trend-rebuild.js') < indexText.indexOf('assets/layout-hierarchy.js')) {
   throw new Error('trend-rebuild.js must load after layout-hierarchy.js');
 }
 
 const chartBase = fs.readFileSync('assets/chart-display-fix.js', 'utf8');
 const layout = fs.readFileSync('assets/layout-hierarchy.js', 'utf8');
+const ranges = fs.readFileSync('assets/range-controls.js', 'utf8');
 const trend = fs.readFileSync('assets/trend-rebuild.js', 'utf8');
 
 if (chartBase.includes('Chart.getChart') || chartBase.includes('.s-range-controls')) {
@@ -68,6 +73,9 @@ if (chartBase.includes('Chart.getChart') || chartBase.includes('.s-range-control
 }
 if (layout.includes('Chart.getChart')) {
   throw new Error('layout-hierarchy.js must not own Chart.js rendering');
+}
+for (const token of ['ครั้งก่อน','สัปดาห์','เดือนนี้','6 เดือน','ปีนี้','ตั้งแต่เริ่ม','10000','removeAttribute(\'disabled\')']) {
+  if (!ranges.includes(token)) throw new Error(`range-controls.js missing ${token}`);
 }
 if (!trend.includes('dailySeries') || !trend.includes('weeklySeries') || !trend.includes('monthlySeries')) {
   throw new Error('trend-rebuild.js must support daily, weekly and monthly aggregation');
@@ -89,4 +97,5 @@ console.log(`NDJSON scans: ${extraScans.length}`);
 console.log(`Total scans: ${combined.length}`);
 console.log(`Latest: ${combined.at(-1).measuredAt}`);
 console.log(`Runtime latest date: ${combined.at(-1).isoDate}`);
+console.log('Trend controls: all 6 canonical ranges enabled, including since-start');
 console.log('Trend granularity: week/month=daily, 6M/year=weekly, since-start=monthly');

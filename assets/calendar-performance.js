@@ -71,7 +71,7 @@
     }
     if(r===7){
       const ce=sh(startWeek(ld),-1), cs=sh(ce,-6), pe=sh(ce,-7), ps=sh(pe,-6);
-      return {mode:'avg',current:rowsBetween(cs,ce),previous:rowsBetween(ps,pe),chartRows:rowsBetween(cs,ce),title:`สัปดาห์ล่าสุด · ${sd(cs)}–${sd(ce)}`,compare:`เทียบ ${sd(ps)}–${sd(pe)}`};
+      return {mode:'avg',current:rowsBetween(cs,ce),previous:rowsBetween(ps,pe),chartRows:rowsBetween(cs,ce),title:'ค่าเฉลี่ยรายสัปดาห์',compare:`${sd(cs)}–${sd(ce)} เทียบ ${sd(ps)}–${sd(pe)}`};
     }
     if(r===30){
       const cs=startMonth(ld), ce=ld, ps=addMonths(cs,-1), pe=addMonths(ce,-1);
@@ -155,7 +155,7 @@
   function patchCharts(){
     const r=selectedRange(),P=periodFor(r);
     const a=patchChart('s-fat-chart','fat',S.TARGET,r,P),b=patchChart('s-muscle-chart','muscle',S.MUSCLE_TARGET,r,P);
-    const note=document.getElementById('s-range-note'); if(note) note.textContent=r===1?'ผลครั้งก่อน → ผลล่าสุด':r===7?'สัปดาห์ล่าสุด: ค่าจริง + ค่าเฉลี่ย 3 วัน':r===30?'เดือนนี้: ค่าจริง + ค่าเฉลี่ย 7 วัน':r>=350?'ค่าเฉลี่ยรายเดือนเพื่อลด noise':'ค่าเฉลี่ยรายสัปดาห์เพื่อลด noise';
+    const note=document.getElementById('s-range-note'); if(note) note.textContent=r===1?'ผลครั้งก่อน → ผลล่าสุด':r===7?'ค่าจริง + ค่าเฉลี่ย 3 วัน':r===30?'เดือนนี้: ค่าจริง + ค่าเฉลี่ย 7 วัน':r>=350?'ค่าเฉลี่ยรายเดือนเพื่อลด noise':'ค่าเฉลี่ยรายสัปดาห์เพื่อลด noise';
     return a&&b;
   }
 

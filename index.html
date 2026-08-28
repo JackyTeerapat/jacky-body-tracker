@@ -39,11 +39,15 @@
         /const\s+LATEST_DATE\s*=\s*'[^']*'\s*;/,
         "const LATEST_DATE = DATA[DATA.length - 1]?.isoDate || '';"
       );
-      const assetVersion = Date.now();
+
+      // UI code is stable between scan uploads. Keep a fixed version so the browser can
+      // cache these scripts; data/scans.ndjson is still fetched with no-cache above.
+      const assetVersion = '20260828-goal-v2';
       source = source.replace(
         '</body>',
         '<script src="assets/chart-display-fix.js?v=' + assetVersion + '"></' + 'script>' +
         '<script src="assets/layout-hierarchy.js?v=' + assetVersion + '"></' + 'script>' +
+        '<script src="assets/goal-progress-v2.js?v=' + assetVersion + '"></' + 'script>' +
         '<script src="assets/range-controls.js?v=' + assetVersion + '"></' + 'script>' +
         '<script src="assets/trend-rebuild.js?v=' + assetVersion + '"></' + 'script></body>'
       );

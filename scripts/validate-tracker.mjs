@@ -38,7 +38,8 @@ const uiScripts = [
   'assets/layout-hierarchy.js',
   'assets/goal-progress-v2.js',
   'assets/range-controls.js',
-  'assets/trend-rebuild.js'
+  'assets/trend-rebuild.js',
+  'assets/detail-range-sync.js'
 ];
 
 for (const file of uiScripts) {
@@ -72,12 +73,16 @@ if (indexText.indexOf('assets/trend-rebuild.js') < indexText.indexOf('assets/lay
 if (indexText.indexOf('assets/goal-progress-v2.js') < indexText.indexOf('assets/layout-hierarchy.js')) {
   throw new Error('goal-progress-v2.js must load after layout-hierarchy.js');
 }
+if (indexText.indexOf('assets/detail-range-sync.js') < indexText.indexOf('assets/trend-rebuild.js')) {
+  throw new Error('detail-range-sync.js must load after trend-rebuild.js');
+}
 
 const chartBase = fs.readFileSync('assets/chart-display-fix.js', 'utf8');
 const layout = fs.readFileSync('assets/layout-hierarchy.js', 'utf8');
 const goal = fs.readFileSync('assets/goal-progress-v2.js', 'utf8');
 const ranges = fs.readFileSync('assets/range-controls.js', 'utf8');
 const trend = fs.readFileSync('assets/trend-rebuild.js', 'utf8');
+const details = fs.readFileSync('assets/detail-range-sync.js', 'utf8');
 
 if (chartBase.includes('Chart.getChart') || chartBase.includes('.s-range-controls')) {
   throw new Error('chart-display-fix.js must not own trend chart/range logic');
@@ -103,6 +108,9 @@ if (!trend.includes("render(1)")) {
 if (trend.includes('forecast') || trend.includes('borderDash')) {
   throw new Error('trend-rebuild.js must not draw forecast lines');
 }
+for (const token of ['compareName','referenceFor','7 วัน','30 วัน','6 เดือน','1 ปี','ตั้งแต่เริ่ม','updateMetricDiffs']) {
+  if (!details.includes(token)) throw new Error(`detail-range-sync.js missing ${token}`);
+}
 
 console.log('Tracker validation OK');
 console.log(`Source pages: ${files.length}`);
@@ -115,3 +123,4 @@ console.log('Goal progress: target + achieved + latest weekly rate + ETA');
 console.log('Fast update path: static UI cached; only scans.ndjson is fresh per scan');
 console.log('Trend controls: all 6 canonical ranges enabled, including since-start');
 console.log('Trend granularity: week/month=daily, 6M/year=weekly, since-start=monthly');
+console.log('Latest-scan detail diffs: synced to selected range reference');

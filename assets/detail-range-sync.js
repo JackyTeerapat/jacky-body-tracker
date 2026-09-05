@@ -9,55 +9,7 @@
   if (!D.length) return;
 
   const latest = D.at(-1);
-  const MS = 864e5;
-  const dt = s => new Date(`${s}T00:00:00Z`);
-  const shiftDays = (d,n) => new Date(d.getTime() + n*MS);
-
-  function addMonths(d,n){
-    const first = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth()+n, 1));
-    const last = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth()+1, 0)).getUTCDate();
-    return new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth(), Math.min(d.getUTCDate(), last)));
-  }
-
-  function rangeName(r){
-    if (r === 1) return 'ครั้งก่อน';
-    if (r === 7) return 'สัปดาห์';
-    if (r === 30) return 'เดือนนี้';
-    if (r >= 150 && r < 350) return '6 เดือน';
-    if (r >= 350 && r < 1000) return 'ปีนี้';
-    return 'ตั้งแต่เริ่ม';
-  }
-
-  function compareName(r){
-    if (r === 1) return 'ครั้งก่อน';
-    if (r === 7) return '7 วัน';
-    if (r === 30) return '30 วัน';
-    if (r >= 150 && r < 350) return '6 เดือน';
-    if (r >= 350 && r < 1000) return '1 ปี';
-    return 'ตั้งแต่เริ่ม';
-  }
-
-  function nearestBefore(target){
-    const t = target.getTime();
-    const candidates = D.slice(0,-1);
-    if (!candidates.length) return null;
-    return candidates.reduce((best,row) => {
-      const diff = Math.abs(dt(row.isoDate).getTime() - t);
-      if (!best || diff < best.diff || (diff === best.diff && row.isoDate > best.row.isoDate)) return {row,diff};
-      return best;
-    }, null)?.row || null;
-  }
-
-  function referenceFor(r){
-    if (D.length < 2) return null;
-    const ld = dt(latest.isoDate);
-    if (r === 1) return D.at(-2);
-    if (r === 7) return nearestBefore(shiftDays(ld,-7));
-    if (r === 30) return nearestBefore(shiftDays(ld,-30));
-    if (r >= 150 && r < 350) return nearestBefore(addMonths(ld,-6));
-    if (r >= 350 && r < 1000) return nearestBefore(addMonths(ld,-12));
-    return D[0];
-  }
+  const reference = D.length >= 2 ? D.at(-2) : null;
 
   const metricDefs = [
     {labels:['Weight','น้ำหนัก'], key:'weight', unit:'kg', digits:1, direction:'lower'},
@@ -85,12 +37,11 @@
     return good ? 'jacky-good' : 'jacky-bad';
   }
 
-  function deltaText(def, current, reference){
-    if (!Number.isFinite(current) || !Number.isFinite(reference)) return '(—)';
-    const delta = current-reference;
+  function deltaText(def, current, previous){
+    if (!Number.isFinite(current) || !Number.isFinite(previous)) return '(—)';
+    const delta = current - previous;
     const sign = delta > 0 ? '+' : delta < 0 ? '−' : '';
-    const value = Math.abs(delta).toFixed(def.digits);
-    return `(${sign}${value}${def.unit ? ` ${def.unit}` : ''})`;
+    return `(${sign}${Math.abs(delta).toFixed(def.digits)}${def.unit ? ` ${def.unit}` : ''})`;
   }
 
   function findDeltaLeaf(start){
@@ -103,7 +54,7 @@
     return null;
   }
 
-  function updateMetricDiffs(reference){
+  function updateMetricDiffs(){
     if (!reference) return;
     const root = document.querySelector('#summary-app');
     if (!root) return;
@@ -125,7 +76,7 @@
       const current = Number(latest[def.key]);
       const previous = Number(reference[def.key]);
       if (!Number.isFinite(current) || !Number.isFinite(previous)) return;
-      const delta = current-previous;
+      const delta = current - previous;
       leaf.textContent = deltaText(def,current,previous);
       leaf.classList.remove('jacky-good','jacky-bad','jacky-neutral');
       leaf.classList.add(semanticClass(def,delta));
@@ -134,12 +85,9 @@
     });
   }
 
-  function updateLabels(r){
+  function updateLabels(){
     const root = document.querySelector('#summary-app');
     if (!root) return;
-    const active = rangeName(r);
-    const compare = compareName(r);
-    const standalone = new Set(['1 วัน','7 วัน','30 วัน','6 เดือน','1 ปี','ตั้งแต่เริ่ม','ครั้งก่อน','สัปดาห์','เดือนนี้','ปีนี้']);
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
     const edits = [];
     while (walker.nextNode()) {
@@ -148,36 +96,21 @@
       const text = node.nodeValue?.trim();
       if (!text) continue;
       if (text === 'ตัวเลขตามช่วงที่เลือก') edits.push([node,'รายละเอียดผลสแกนล่าสุด']);
-      else if (/^เทียบ\s+(?:ครั้งก่อน|1 วัน|7 วัน|30 วัน|6 เดือน|1 ปี|ตั้งแต่เริ่ม|สัปดาห์|เดือนนี้|ปีนี้|ผลล่าสุด)$/.test(text)) edits.push([node,`เทียบ ${compare}`]);
-      else if (standalone.has(text)) edits.push([node,active]);
+      else if (/^เทียบ\s+(?:ครั้งก่อน|1 วัน|7 วัน|30 วัน|6 เดือน|1 ปี|ตั้งแต่เริ่ม|สัปดาห์|เดือนนี้|ปีนี้|ผลล่าสุด|รายวัน|รายสัปดาห์|รายเดือน)$/.test(text)) edits.push([node,'เทียบผลวัดก่อนหน้า']);
     }
     edits.forEach(([node,replacement]) => {
       const old = node.nodeValue;
-      node.nodeValue = old.replace(old.trim(),replacement);
+      node.nodeValue = old.replace(old.trim(), replacement);
     });
   }
 
-  function sync(r){
-    const range = Number.isFinite(+r) ? +r : 1;
-    updateLabels(range);
-    updateMetricDiffs(referenceFor(range));
-  }
-
-  function activeRange(){
-    const pressed = document.querySelector('#summary-app .s-range-controls button[aria-pressed="true"][data-range]');
-    const selected = Number(pressed?.dataset.range);
-    return Number.isFinite(selected) ? selected : 1;
+  function sync(){
+    updateLabels();
+    updateMetricDiffs();
   }
 
   function start(){
-    [50,250,800,1600].forEach(ms => setTimeout(() => sync(activeRange()),ms));
-    document.addEventListener('click',event => {
-      const button = event.target.closest?.('#summary-app .s-range-controls button[data-range]');
-      if (!button) return;
-      const r = Number(button.dataset.range);
-      if (!Number.isFinite(r)) return;
-      [0,40,140].forEach(ms => setTimeout(() => sync(r),ms));
-    },true);
+    [50,250,800,1600,3200].forEach(ms => setTimeout(sync,ms));
   }
 
   document.readyState === 'loading'

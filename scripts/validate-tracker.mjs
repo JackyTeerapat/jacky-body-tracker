@@ -99,14 +99,14 @@ for (const token of ['รายวัน','รายสัปดาห์','ร�
 for (const token of ['dailyBuckets','weeklyBuckets','monthlyBuckets','bucketSeries']) {
   if (!trend.includes(token)) throw new Error(`trend-rebuild.js missing ${token}`);
 }
-for (const token of ['zoomState','data-zoom','scroll หรือปุ่ม +/− เพื่อ zoom']) {
+for (const token of ['zoomState','data-zoom','scroll หรือ +/− เพื่อ zoom']) {
   if (!trend.includes(token)) throw new Error(`trend-rebuild.js missing zoom support: ${token}`);
+}
+for (const token of ['FORECAST_SHARE = 0.30','forecastSeries','borderDash','กันพื้นที่ขวา 30% สำหรับคาดการณ์','เส้นประ = แนวโน้มเชิงเส้น']) {
+  if (!trend.includes(token)) throw new Error(`trend-rebuild.js missing forecast support: ${token}`);
 }
 if (!trend.includes('render(1)')) {
   throw new Error('trend-rebuild.js must default to daily view');
-}
-if (trend.includes('forecast') || trend.includes('borderDash')) {
-  throw new Error('trend-rebuild.js must not draw forecast lines');
 }
 for (const token of ['reference = D.length >= 2','เทียบผลวัดก่อนหน้า','updateMetricDiffs']) {
   if (!details.includes(token)) throw new Error(`detail-range-sync.js missing ${token}`);
@@ -122,5 +122,5 @@ console.log(`Runtime latest date: ${combined.at(-1).isoDate}`);
 console.log('Goal progress: target + achieved + latest weekly rate + ETA');
 console.log('Fast update path: static UI cached; only scans.ndjson is fresh per scan');
 console.log('Trend controls: daily / weekly / monthly resolution');
-console.log('Trend graph: all available data with pan + zoom');
+console.log('Trend graph: all available data with pan + zoom + 30% forecast space');
 console.log('Latest-scan detail diffs: always compared with previous scan');

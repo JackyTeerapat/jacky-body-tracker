@@ -13,6 +13,7 @@
   const GOOD = '#147d7a';
   const BAD = '#c26453';
   const NEUTRAL = '#718084';
+  const FORECAST_SHARE = 0.30;
   const MODES = {
     1: { key: 'daily', label: 'รายวัน' },
     7: { key: 'weekly', label: 'รายสัปดาห์' },
@@ -54,12 +55,7 @@
   function dailyBuckets() {
     return [...groupBy(D, row => row.isoDate).entries()]
       .sort((a,b) => a[0].localeCompare(b[0]))
-      .map(([key, rows]) => ({
-        key,
-        rows,
-        label: shortDate(key, true),
-        compactLabel: shortDate(key)
-      }));
+      .map(([key, rows]) => ({ key, rows, label: shortDate(key, true), compactLabel: shortDate(key) }));
   }
 
   function latestClosedSunday() {
@@ -110,10 +106,7 @@
     const current = buckets.at(-1);
     const previous = buckets.at(-2);
     if (!current || !previous) return { current: current?.rows || [], previous: previous?.rows || [], compare: 'ข้อมูลยังไม่พอ' };
-
-    if (!current.open) {
-      return { current: current.rows, previous: previous.rows, compare: `${current.label} เทียบกับ ${previous.label}` };
-    }
+    if (!current.open) return { current: current.rows, previous: previous.rows, compare: `${current.label} เทียบกับ ${previous.label}` };
 
     const currentLastDay = Math.max(...current.rows.map(row => dt(row.isoDate).getUTCDate()));
     const priorRows = previous.rows.filter(row => dt(row.isoDate).getUTCDate() <= currentLastDay);
@@ -143,6 +136,7 @@
   function bucketSeries(mode, key) {
     return bucketsFor(mode)
       .map(bucket => ({
+        key: bucket.key,
         label: bucket.compactLabel,
         fullLabel: bucket.label,
         value: avg(bucket.rows.map(x => x[key])),
@@ -165,12 +159,7 @@
     const pct = previous ? delta / previous * 100 : null;
     const good = lowerBetter ? delta < 0 : delta > 0;
     const bad = lowerBetter ? delta > 0 : delta < 0;
-    return {
-      delta,
-      pct,
-      arrow: delta > 0 ? '↑' : delta < 0 ? '↓' : '→',
-      cls: Math.abs(delta) < 1e-9 ? 'neutral' : good ? 'good' : bad ? 'bad' : 'neutral'
-    };
+    return { delta, pct, arrow: delta > 0 ? '↑' : delta < 0 ? '↓' : '→', cls: Math.abs(delta) < 1e-9 ? 'neutral' : good ? 'good' : bad ? 'bad' : 'neutral' };
   }
 
   function deltaPill(meta, unit, isBF = false) {
@@ -180,34 +169,70 @@
     return `<i class="tr2-pill ${meta.cls}">${meta.arrow} ${first}${relative}</i>`;
   }
 
+  function nextPointLabel(mode, lastKey, step) {
+    if (mode === 'daily') {
+      const d = shiftDays(dt(lastKey), step);
+      return { key: iso(d), label: shortDate(d), fullLabel: shortDate(d, true) };
+    }
+    if (mode === 'weekly') {
+      const start = shiftDays(dt(lastKey), step * 7);
+      const end = shiftDays(start, 6);
+      return { key: iso(start), label: `${shortDate(start)}–${shortDate(end)}`, fullLabel: rangeLabel(start, end) };
+    }
+    const [y, m] = lastKey.split('-').map(Number);
+    const d = new Date(Date.UTC(y, m - 1 + step, 1));
+    const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+    return { key, label: `${MONTHS[d.getUTCMonth()]} ${String(d.getUTCFullYear()).slice(-2)}`, fullLabel: `${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}` };
+  }
+
+  function regressionSlope(series, mode) {
+    const maxWindow = mode === 'daily' ? 30 : mode === 'weekly' ? 8 : 6;
+    const sample = series.slice(-Math.min(series.length, maxWindow));
+    if (sample.length < 2) return 0;
+    const n = sample.length;
+    const meanX = (n - 1) / 2;
+    const meanY = avg(sample.map(x => x.value));
+    let numerator = 0;
+    let denominator = 0;
+    sample.forEach((point, i) => {
+      const dx = i - meanX;
+      numerator += dx * (point.value - meanY);
+      denominator += dx * dx;
+    });
+    return denominator ? numerator / denominator : 0;
+  }
+
+  function forecastSeries(series, mode) {
+    if (series.length < 2) return [];
+    const futureCount = Math.max(1, Math.ceil(series.length * FORECAST_SHARE / (1 - FORECAST_SHARE)));
+    const slope = regressionSlope(series, mode);
+    const last = series.at(-1);
+    return Array.from({ length: futureCount }, (_, i) => {
+      const step = i + 1;
+      const label = nextPointLabel(mode, last.key, step);
+      return { ...label, value: Math.max(0, last.value + slope * step), predicted: true };
+    });
+  }
+
   function addStyles() {
-    if (document.getElementById('trend-rebuild-v3-style')) return;
+    if (document.getElementById('trend-rebuild-v4-style')) return;
     const style = document.createElement('style');
-    style.id = 'trend-rebuild-v3-style';
+    style.id = 'trend-rebuild-v4-style';
     style.textContent = `
-      .tr2-hide{display:none!important}
-      .tr2-root{margin-top:10px}
+      .tr2-hide{display:none!important}.tr2-root{margin-top:10px}
       .tr2-summary{padding:12px;border:1px solid #dfe9e6;border-radius:15px;background:#fbfcfc}
-      .tr2-head{display:flex;justify-content:space-between;gap:10px;margin-bottom:9px}
-      .tr2-head strong{font-size:13px;color:#182326}.tr2-head span{font-size:9px;color:${NEUTRAL};text-align:right}
-      .tr2-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
-      .tr2-metric{padding:9px;border:1px solid #edf2f0;border-radius:12px;background:#fff}
+      .tr2-head{display:flex;justify-content:space-between;gap:10px;margin-bottom:9px}.tr2-head strong{font-size:13px;color:#182326}.tr2-head span{font-size:9px;color:${NEUTRAL};text-align:right}
+      .tr2-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}.tr2-metric{padding:9px;border:1px solid #edf2f0;border-radius:12px;background:#fff}
       .tr2-metric small{display:block;font-size:9px;color:#617579;font-weight:850}.tr2-metric b{display:block;margin:3px 0 5px;font-size:16px;color:#182326}
-      .tr2-pill{display:inline-block;padding:3px 7px;border-radius:999px;font-size:9px;font-style:normal;font-weight:850;white-space:nowrap}
-      .tr2-pill.good{color:${GOOD};background:#e8f7f5}.tr2-pill.bad{color:${BAD};background:#fff0eb}.tr2-pill.neutral{color:${NEUTRAL};background:#f1f4f3}
-      .tr2-note{display:flex;justify-content:space-between;gap:8px;align-items:center;margin:10px 1px 8px;font-size:9px;color:${NEUTRAL}}
-      .tr2-note b{font-weight:800;color:#50666a}
-      .tr2-card{margin-bottom:12px;padding:12px;border:1px solid #dce8e5;border-radius:17px;background:#fff}
-      .tr2-card.fat{border-color:#f2d2c9;background:#fffaf8}.tr2-card.muscle{border-color:#d3e7ed;background:#f9fcfd}
-      .tr2-card-head{display:flex;justify-content:space-between;gap:10px;align-items:center}.tr2-card-head strong{font-size:15px;color:#182326}.tr2-card-head>span{font-size:11px;font-weight:900}
-      .tr2-card.fat .tr2-card-head>span{color:#ef7c67}.tr2-card.muscle .tr2-card-head>span{color:#318ba7}
-      .tr2-tools{display:flex;align-items:center;justify-content:flex-end;gap:5px;margin:7px 0 1px}
-      .tr2-tools button{min-width:30px;height:27px;padding:0 8px;border:1px solid #d9e4e2;border-radius:8px;background:#fff;color:#50666a;font:800 10px/1 system-ui,sans-serif;cursor:pointer}
-      .tr2-tools button:hover{border-color:#85cbc6;background:#f3faf9;color:${GOOD}}
-      .tr2-readout{height:18px;text-align:right;font-size:9px;color:#617579;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-      .tr2-canvas{height:210px}.tr2-canvas canvas{touch-action:pan-y;cursor:grab}.tr2-canvas canvas.dragging{cursor:grabbing}
+      .tr2-pill{display:inline-block;padding:3px 7px;border-radius:999px;font-size:9px;font-style:normal;font-weight:850;white-space:nowrap}.tr2-pill.good{color:${GOOD};background:#e8f7f5}.tr2-pill.bad{color:${BAD};background:#fff0eb}.tr2-pill.neutral{color:${NEUTRAL};background:#f1f4f3}
+      .tr2-note{display:flex;justify-content:space-between;gap:8px;align-items:center;margin:10px 1px 8px;font-size:9px;color:${NEUTRAL}}.tr2-note b{font-weight:800;color:#50666a}
+      .tr2-card{margin-bottom:12px;padding:12px;border:1px solid #dce8e5;border-radius:17px;background:#fff}.tr2-card.fat{border-color:#f2d2c9;background:#fffaf8}.tr2-card.muscle{border-color:#d3e7ed;background:#f9fcfd}
+      .tr2-card-head{display:flex;justify-content:space-between;gap:10px;align-items:center}.tr2-card-head strong{font-size:15px;color:#182326}.tr2-card-head>span{font-size:11px;font-weight:900}.tr2-card.fat .tr2-card-head>span{color:#ef7c67}.tr2-card.muscle .tr2-card-head>span{color:#318ba7}
+      .tr2-tools{display:flex;align-items:center;justify-content:flex-end;gap:5px;margin:7px 0 1px}.tr2-tools button{min-width:30px;height:27px;padding:0 8px;border:1px solid #d9e4e2;border-radius:8px;background:#fff;color:#50666a;font:800 10px/1 system-ui,sans-serif;cursor:pointer}.tr2-tools button:hover{border-color:#85cbc6;background:#f3faf9;color:${GOOD}}
+      .tr2-legend{margin-right:auto;display:flex;align-items:center;gap:9px;color:${NEUTRAL};font-size:9px}.tr2-legend i{display:inline-block;width:18px;border-top:2px solid currentColor;vertical-align:middle}.tr2-legend i.pred{border-top-style:dashed;opacity:.7}
+      .tr2-readout{height:18px;text-align:right;font-size:9px;color:#617579;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tr2-canvas{height:210px}.tr2-canvas canvas{touch-action:pan-y;cursor:grab}.tr2-canvas canvas.dragging{cursor:grabbing}
       .tr2-empty{height:210px;display:flex;align-items:center;justify-content:center;text-align:center;color:${NEUTRAL};font-size:10px;line-height:1.5}.tr2-empty strong{display:block;color:#34484c;font-size:12px;margin-bottom:3px}
-      @media(max-width:650px){.tr2-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.tr2-head{flex-direction:column}.tr2-head span{text-align:left}.tr2-canvas,.tr2-empty{height:190px}.tr2-note{display:block}.tr2-note b{display:block;margin-top:3px}}
+      @media(max-width:650px){.tr2-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.tr2-head{flex-direction:column}.tr2-head span{text-align:left}.tr2-canvas,.tr2-empty{height:190px}.tr2-note{display:block}.tr2-note b{display:block;margin-top:3px}.tr2-tools{flex-wrap:wrap}.tr2-legend{width:100%;margin:0 0 2px}}
     `;
     document.head.appendChild(style);
   }
@@ -260,16 +285,14 @@
     const points = series.length;
     return `<div class="tr2-card ${kind}">
       <div class="tr2-card-head"><strong>${title}</strong><span>${fmt(value)} kg</span></div>
-      ${points >= 2 ? `<div class="tr2-tools"><button type="button" data-chart="${kind}" data-zoom="out" title="Zoom out">−</button><button type="button" data-chart="${kind}" data-zoom="reset">ทั้งหมด</button><button type="button" data-chart="${kind}" data-zoom="in" title="Zoom in">+</button></div>` : ''}
+      ${points >= 2 ? `<div class="tr2-tools"><span class="tr2-legend"><span><i></i> ข้อมูลจริง</span><span><i class="pred"></i> คาดการณ์</span></span><button type="button" data-chart="${kind}" data-zoom="out" title="Zoom out">−</button><button type="button" data-chart="${kind}" data-zoom="reset">ทั้งหมด</button><button type="button" data-chart="${kind}" data-zoom="in" title="Zoom in">+</button></div>` : ''}
       <div class="tr2-readout" id="tr2-read-${kind}"></div>
-      ${points < 2
-        ? `<div class="tr2-empty"><div><strong>ข้อมูลยังไม่พอสำหรับดูแนวโน้ม</strong>มี ${points} จุด · ต้องมีอย่างน้อย 2 จุด</div></div>`
-        : `<div class="tr2-canvas"><canvas id="tr2-${kind}"></canvas></div>`}
+      ${points < 2 ? `<div class="tr2-empty"><div><strong>ข้อมูลยังไม่พอสำหรับดูแนวโน้ม</strong>มี ${points} จุด · ต้องมีอย่างน้อย 2 จุด</div></div>` : `<div class="tr2-canvas"><canvas id="tr2-${kind}"></canvas></div>`}
     </div>`;
   }
 
   function setYRange(state) {
-    const visible = state.series.slice(state.start, state.end + 1).map(x => x.value).filter(Number.isFinite);
+    const visible = state.plotSeries.slice(state.start, state.end + 1).map(x => x.value).filter(Number.isFinite);
     if (!visible.length) return;
     const minValue = Math.min(...visible);
     const maxValue = Math.max(...visible);
@@ -281,7 +304,7 @@
   }
 
   function applyView(state, start, end) {
-    const n = state.series.length;
+    const n = state.plotSeries.length;
     start = Math.max(0, Math.min(Math.round(start), n - 2));
     end = Math.min(n - 1, Math.max(Math.round(end), start + 1));
     state.start = start;
@@ -293,7 +316,7 @@
   }
 
   function zoomState(state, factor, center = null) {
-    const n = state.series.length;
+    const n = state.plotSeries.length;
     if (n < 3) return;
     const oldSize = state.end - state.start + 1;
     const minSize = Math.min(4, n);
@@ -306,7 +329,7 @@
   }
 
   function resetState(state) {
-    applyView(state, 0, state.series.length - 1);
+    applyView(state, 0, state.plotSeries.length - 1);
   }
 
   function bindChartGestures(state) {
@@ -330,7 +353,7 @@
       const size = drag.end - drag.start + 1;
       const shift = Math.round((drag.x - event.clientX) / width * size);
       let start = drag.start + shift;
-      start = Math.max(0, Math.min(start, state.series.length - size));
+      start = Math.max(0, Math.min(start, state.plotSeries.length - size));
       applyView(state, start, start + size - 1);
     });
     const stop = event => {
@@ -342,13 +365,22 @@
     canvas.addEventListener('pointercancel', stop);
   }
 
-  function drawChart(kind, series) {
+  function drawChart(kind, series, mode) {
     if (series.length < 2) return;
     const canvas = document.getElementById(`tr2-${kind}`);
     if (!canvas) return;
     const color = kind === 'fat' ? '#ef7c67' : '#318ba7';
     const fill = kind === 'fat' ? 'rgba(239,124,103,.10)' : 'rgba(49,139,167,.10)';
-    const values = series.map(x => x.value);
+    const future = forecastSeries(series, mode);
+    const plotSeries = [...series, ...future];
+    const labels = plotSeries.map(x => x.label);
+    const actualData = [...series.map(x => x.value), ...future.map(() => null)];
+    const forecastData = [
+      ...series.slice(0, -1).map(() => null),
+      series.at(-1).value,
+      ...future.map(x => x.value)
+    ];
+    const values = plotSeries.map(x => x.value);
     const minValue = Math.min(...values);
     const maxValue = Math.max(...values);
     const span = Math.max(maxValue - minValue, kind === 'fat' ? 0.4 : 0.5);
@@ -357,20 +389,35 @@
     const chart = new Chart(canvas, {
       type: 'line',
       data: {
-        labels: series.map(x => x.label),
-        datasets: [{
-          data: values,
-          borderColor: color,
-          backgroundColor: fill,
-          borderWidth: 2.6,
-          pointRadius: series.length > 60 ? 1.8 : series.length > 30 ? 2.5 : 3.8,
-          pointHoverRadius: 6,
-          pointBackgroundColor: series.map(x => x.open ? '#fff' : color),
-          pointBorderColor: color,
-          pointBorderWidth: series.map(x => x.open ? 2.7 : 1.5),
-          tension: 0.16,
-          fill: true
-        }]
+        labels,
+        datasets: [
+          {
+            data: actualData,
+            borderColor: color,
+            backgroundColor: fill,
+            borderWidth: 2.6,
+            pointRadius: series.length > 60 ? 1.8 : series.length > 30 ? 2.5 : 3.8,
+            pointHoverRadius: 6,
+            pointBackgroundColor: series.map(x => x.open ? '#fff' : color),
+            pointBorderColor: color,
+            pointBorderWidth: series.map(x => x.open ? 2.7 : 1.5),
+            tension: 0.16,
+            fill: true,
+            spanGaps: false
+          },
+          {
+            data: forecastData,
+            borderColor: color,
+            backgroundColor: 'transparent',
+            borderWidth: 2,
+            borderDash: [6, 5],
+            pointRadius: 0,
+            pointHoverRadius: 4,
+            tension: 0.16,
+            fill: false,
+            spanGaps: true
+          }
+        ]
       },
       options: {
         responsive: true,
@@ -379,10 +426,7 @@
         interaction: { mode: 'nearest', intersect: false, axis: 'x' },
         plugins: { legend: { display: false }, tooltip: { enabled: false } },
         scales: {
-          x: {
-            grid: { display: false },
-            ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 7, color: '#7c8d91', font: { size: 9 } }
-          },
+          x: { grid: { display: false }, ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 7, color: '#7c8d91', font: { size: 9 } } },
           y: {
             beginAtZero: false,
             min: Math.floor((minValue - pad) * 10) / 10,
@@ -395,12 +439,15 @@
           const hit = active?.[0];
           const readout = document.getElementById(`tr2-read-${kind}`);
           if (!readout) return;
-          readout.textContent = hit ? `${series[hit.index].fullLabel} · ${kind === 'fat' ? 'ไขมัน' : 'กล้ามเนื้อ'} ${fmt(series[hit.index].value)} kg` : '';
+          if (!hit) { readout.textContent = ''; return; }
+          const point = plotSeries[hit.index];
+          const prefix = point.predicted ? 'คาดการณ์ · ' : '';
+          readout.textContent = `${prefix}${point.fullLabel} · ${kind === 'fat' ? 'ไขมัน' : 'กล้ามเนื้อ'} ${fmt(point.value)} kg`;
         }
       }
     });
 
-    const state = { kind, chart, series, start: 0, end: series.length - 1 };
+    const state = { kind, chart, series, plotSeries, start: 0, end: plotSeries.length - 1 };
     chartStates.set(kind, state);
     charts.push(chart);
     bindChartGestures(state);
@@ -458,13 +505,13 @@
           }).join('')}
         </div>
       </div>
-      <div class="tr2-note"><span>กราฟ${modeName(r)} · แสดงข้อมูลทั้งหมด ${pointCount} จุด</span><b>ลากเพื่อเลื่อน · scroll หรือปุ่ม +/− เพื่อ zoom</b></div>
+      <div class="tr2-note"><span>กราฟ${modeName(r)} · ข้อมูลจริง ${pointCount} จุด · กันพื้นที่ขวา 30% สำหรับคาดการณ์</span><b>เส้นประ = แนวโน้มเชิงเส้น · ลากเพื่อเลื่อน · scroll หรือ +/− เพื่อ zoom</b></div>
       ${chartCard('fat','ไขมัน',fatCurrent,fatSeries)}
       ${chartCard('muscle','กล้ามเนื้อ',muscleCurrent,muscleSeries)}
     `;
 
-    drawChart('fat', fatSeries);
-    drawChart('muscle', muscleSeries);
+    drawChart('fat', fatSeries, mode);
+    drawChart('muscle', muscleSeries, mode);
     bindZoomButtons(root);
     return true;
   }
@@ -472,8 +519,8 @@
   function bind() {
     const controls = ensureControls();
     if (!controls) return false;
-    if (controls.dataset.trendRebuildV3Bound === '1') return true;
-    controls.dataset.trendRebuildV3Bound = '1';
+    if (controls.dataset.trendRebuildV4Bound === '1') return true;
+    controls.dataset.trendRebuildV4Bound = '1';
     controls.addEventListener('click', event => {
       const button = event.target.closest?.('button[data-range]');
       if (!button || !controls.contains(button)) return;

@@ -93,22 +93,22 @@ if (layout.includes('Chart.getChart')) {
 for (const token of ['เป้า','ลดแล้ว','เพิ่มแล้ว','kg/สัปดาห์','weeklySeries','latestClosedWeek']) {
   if (!goal.includes(token)) throw new Error(`goal-progress-v2.js missing ${token}`);
 }
-for (const token of ['ครั้งก่อน','สัปดาห์','เดือนนี้','6 เดือน','ปีนี้','ตั้งแต่เริ่ม','10000','removeAttribute(\'disabled\')']) {
+for (const token of ['รายวัน','รายสัปดาห์','รายเดือน','removeAttribute(\'disabled\')']) {
   if (!ranges.includes(token)) throw new Error(`range-controls.js missing ${token}`);
 }
-if (!trend.includes('dailySeries') || !trend.includes('weeklySeries') || !trend.includes('monthlySeries')) {
-  throw new Error('trend-rebuild.js must support daily, weekly and monthly aggregation');
+for (const token of ['dailyBuckets','weeklyBuckets','monthlyBuckets','bucketSeries']) {
+  if (!trend.includes(token)) throw new Error(`trend-rebuild.js missing ${token}`);
 }
-if (!trend.includes("graphMode:'daily'") || !trend.includes("graphMode:'weekly'") || !trend.includes("graphMode:'monthly'")) {
-  throw new Error('trend-rebuild.js must map ranges to scaled graph granularity');
+for (const token of ['zoomState','data-zoom','scroll หรือปุ่ม +/− เพื่อ zoom']) {
+  if (!trend.includes(token)) throw new Error(`trend-rebuild.js missing zoom support: ${token}`);
 }
-if (!trend.includes("render(1)")) {
-  throw new Error('trend-rebuild.js must default to previous-scan view');
+if (!trend.includes('render(1)')) {
+  throw new Error('trend-rebuild.js must default to daily view');
 }
 if (trend.includes('forecast') || trend.includes('borderDash')) {
   throw new Error('trend-rebuild.js must not draw forecast lines');
 }
-for (const token of ['compareName','referenceFor','7 วัน','30 วัน','6 เดือน','1 ปี','ตั้งแต่เริ่ม','updateMetricDiffs']) {
+for (const token of ['reference = D.length >= 2','เทียบผลวัดก่อนหน้า','updateMetricDiffs']) {
   if (!details.includes(token)) throw new Error(`detail-range-sync.js missing ${token}`);
 }
 
@@ -121,6 +121,6 @@ console.log(`Latest: ${combined.at(-1).measuredAt}`);
 console.log(`Runtime latest date: ${combined.at(-1).isoDate}`);
 console.log('Goal progress: target + achieved + latest weekly rate + ETA');
 console.log('Fast update path: static UI cached; only scans.ndjson is fresh per scan');
-console.log('Trend controls: all 6 canonical ranges enabled, including since-start');
-console.log('Trend granularity: week/month=daily, 6M/year=weekly, since-start=monthly');
-console.log('Latest-scan detail diffs: synced to selected range reference');
+console.log('Trend controls: daily / weekly / monthly resolution');
+console.log('Trend graph: all available data with pan + zoom');
+console.log('Latest-scan detail diffs: always compared with previous scan');

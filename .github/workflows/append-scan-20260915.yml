@@ -1,0 +1,40 @@
+name: Append Fitdays scan 2026-09-15
+
+on:
+  push:
+    paths:
+      - '.github/workflows/append-scan-20260915.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  append:
+    if: github.event.head_commit.message == 'Add one-time scan appender'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Append scan safely
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path('data/scans.ndjson')
+          rows = [json.loads(x) for x in p.read_text().splitlines() if x.strip()]
+          measured = '2026-09-15T11:14:35'
+          source = '1000077224.png'
+          if not any(r.get('measuredAt') == measured or r.get('sourceFile') == source for r in rows):
+              rec = {"date":"Sep 15","isoDate":"2026-09-15","measuredAt":measured,"time":"11:14:35","profileId":"Jacky","sourceFile":source,"gender":"Male","age":26,"height":176,"daysFromStart":234,"weight":81.5,"fat":18.1,"bf":22.2,"muscle":59.2,"skeletalMuscle":36.1,"boneMass":4.2,"proteinMass":12.7,"waterWeight":46.5,"score":77,"targetWeight":73.7,"weightControl":-7.8,"fatControl":-7.8,"muscleControl":0.0,"bmi":26.3,"obesity":119,"vis":6,"bmr":1739,"fatFreeMass":63.4,"subcutaneousFat":15.9,"asmi":9.1,"bodyAge":25,"whr":0.88,"composition":{"ranges":{"weight":[57.9,78.4],"fat":[8.2,16.3],"bone":[3.3,4.2],"protein":[10.0,12.4],"water":[36.5,45.5],"muscle":[46.4,57.9],"skeletalMuscle":[29.2,35.6]},"proportions":{"weight":100.0,"fat":22.2,"bone":5.2,"protein":15.6,"water":57.0,"muscle":72.6,"skeletalMuscle":44.3},"evaluation":{"weight":"High","fat":"High","bone":"Excellent","protein":"Excellent","water":"Excellent","muscle":"Excellent","skeletalMuscle":"Excellent"}},"sf":{"la":1.0,"ra":1.0,"tr":9.6,"ll":2.8,"rl":2.8},"sfPct":{"la":154.1,"ra":156.6,"tr":220.2,"ll":165.3,"rl":166.0},"sm":{"la":3.7,"ra":3.7,"tr":27.6,"ll":10.4,"rl":10.4},"smPct":{"la":109.4,"ra":108.6,"tr":102.1,"ll":110.3,"rl":110.4},"impedance":{"20":{"ra":273.0,"la":264.3,"tr":24.2,"rl":255.2,"ll":262.0},"100":{"ra":239.7,"la":230.8,"tr":18.4,"rl":223.1,"ll":228.0}},"balance":{"upper":"Balanced","lower":"Balanced","upperLower":"Balanced"},"exerciseCalories":{"fastSkippingRopes":513,"walk":163,"walkQuickly":235,"runSlowly":285,"yoga":163,"bike":244,"basketball":244,"swim":285,"climbStairs":171,"climbMountains":342}}
+              with p.open('a', encoding='utf-8') as f:
+                  if p.stat().st_size and not p.read_bytes().endswith(b'\n'):
+                      f.write('\n')
+                  f.write(json.dumps(rec, separators=(',', ':'), ensure_ascii=False) + '\n')
+          PY
+          rm -f .github/workflows/append-scan-20260915.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/scans.ndjson .github/workflows/append-scan-20260915.yml
+          git diff --cached --quiet && exit 0
+          git commit -m 'Add Fitdays scan for 2026-09-15'
+          git push

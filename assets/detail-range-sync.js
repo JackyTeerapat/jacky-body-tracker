@@ -68,9 +68,11 @@
       if (def) nodes.push({def,start:node.parentElement});
     }
 
-    const seen = new Set();
+    // The legacy page can contain the same metric label in more than one detail block.
+    // Update every eligible occurrence instead of stopping at the first label found;
+    // otherwise a hidden/older block can consume the metric and leave the visible
+    // "latest scan" delta stale.
     nodes.forEach(({def,start}) => {
-      if (seen.has(def.key)) return;
       const leaf = findDeltaLeaf(start);
       if (!leaf) return;
       const current = Number(latest[def.key]);
@@ -81,7 +83,6 @@
       leaf.classList.remove('jacky-good','jacky-bad','jacky-neutral');
       leaf.classList.add(semanticClass(def,delta));
       leaf.style.fontWeight = '800';
-      seen.add(def.key);
     });
   }
 

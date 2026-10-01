@@ -71,7 +71,9 @@
         '<script src="assets/goal-progress-v2.js?v=' + assetVersion + '"></' + 'script>' +
         '<script src="assets/range-controls.js?v=' + assetVersion + '"></' + 'script>' +
         '<script src="assets/trend-rebuild.js?v=' + assetVersion + '"></' + 'script>' +
-        '<script src="assets/detail-range-sync.js?v=' + assetVersion + '"></' + 'script></body>'
+        '<script src="assets/detail-range-sync.js?v=' + assetVersion + '"></' + 'script>' +
+        '<button id="private-scan-import" style="position:fixed;right:16px;bottom:16px;z-index:9999;border:0;border-radius:999px;padding:10px 14px;background:#1570ef;color:#fff;font:600 13px system-ui;box-shadow:0 4px 14px #0002">+ ข้อมูลส่วนตัว</button>' +
+        '<script>(function(){const b=document.getElementById("private-scan-import");if(!b)return;b.onclick=function(){const raw=prompt("วาง JSON 1 รายการ หรือ NDJSON หลายบรรทัด ข้อมูลจะเก็บเฉพาะใน browser เครื่องนี้");if(!raw)return;try{const rows=raw.trim().startsWith("[")?JSON.parse(raw):raw.split(/\\r?\\n/).filter(Boolean).map(JSON.parse);const old=window.JACKY_BODY_TRACKER_LOCAL.get();const m=new Map();[...old,...rows].forEach(x=>{const k=x.measuredAt||x.sourceFile||x.isoDate;if(k)m.set(k,x)});window.JACKY_BODY_TRACKER_LOCAL.set([...m.values()]);}catch(e){alert("ข้อมูลไม่ถูกต้อง: "+e.message)}}})();</' + 'script></body>'
       );
 
       // Add a tiny local-data bridge before rendering the legacy app. It keeps

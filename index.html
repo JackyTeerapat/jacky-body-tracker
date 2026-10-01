@@ -19,32 +19,11 @@
       Promise.all(files.map(file => readText(file))),
       readText('data/scans.ndjson', 'no-cache').catch(() => '')
     ]).then(([parts, scanText]) => {
-      const repoScans = String(scanText)
+      const extraScans = String(scanText)
         .split(/\r?\n/)
         .map(line => line.trim())
         .filter(Boolean)
         .map(line => JSON.parse(line));
-
-      // Sensitive scan updates can be stored locally in the browser instead of
-      // committing raw health data to the public GitHub repository.
-      const localScans = (() => {
-        try {
-          const raw = localStorage.getItem('jacky-body-tracker-private-scans');
-          return raw ? JSON.parse(raw) : [];
-        } catch (error) {
-          console.warn('Cannot read local scan data', error);
-          return [];
-        }
-      })();
-
-      const merged = new Map();
-      [...repoScans, ...localScans].forEach(scan => {
-        const key = scan.measuredAt || scan.sourceFile || scan.isoDate;
-        if (key) merged.set(key, scan);
-      });
-      const extraScans = [...merged.values()].sort((a, b) =>
-        String(a.measuredAt || a.isoDate).localeCompare(String(b.measuredAt || b.isoDate))
-      );
 
       let source = parts.join('');
       if (extraScans.length) {
@@ -71,30 +50,8 @@
         '<script src="assets/goal-progress-v2.js?v=' + assetVersion + '"></' + 'script>' +
         '<script src="assets/range-controls.js?v=' + assetVersion + '"></' + 'script>' +
         '<script src="assets/trend-rebuild.js?v=' + assetVersion + '"></' + 'script>' +
-        '<script src="assets/detail-range-sync.js?v=' + assetVersion + '"></' + 'script>' +
-        '<button id="private-scan-import" style="position:fixed;right:16px;bottom:16px;z-index:9999;border:0;border-radius:999px;padding:10px 14px;background:#1570ef;color:#fff;font:600 13px system-ui;box-shadow:0 4px 14px #0002">+ ข้อมูลส่วนตัว</button>' +
-        '<script>(function(){const b=document.getElementById("private-scan-import");if(!b)return;b.onclick=function(){const raw=prompt("วาง JSON 1 รายการ หรือ NDJSON หลายบรรทัด ข้อมูลจะเก็บเฉพาะใน browser เครื่องนี้");if(!raw)return;try{const rows=raw.trim().startsWith("[")?JSON.parse(raw):raw.split(/\\r?\\n/).filter(Boolean).map(JSON.parse);const old=window.JACKY_BODY_TRACKER_LOCAL.get();const m=new Map();[...old,...rows].forEach(x=>{const k=x.measuredAt||x.sourceFile||x.isoDate;if(k)m.set(k,x)});window.JACKY_BODY_TRACKER_LOCAL.set([...m.values()]);}catch(e){alert("ข้อมูลไม่ถูกต้อง: "+e.message)}}})();</' + 'script></body>'
+        '<script src="assets/detail-range-sync.js?v=' + assetVersion + '"></' + 'script></body>'
       );
-
-      // Add a tiny local-data bridge before rendering the legacy app. It keeps
-      // future sensitive scans on this device while preserving the existing UI.
-      window.JACKY_BODY_TRACKER_LOCAL = {
-        get() {
-          try {
-            return JSON.parse(localStorage.getItem('jacky-body-tracker-private-scans') || '[]');
-          } catch (_) {
-            return [];
-          }
-        },
-        set(scans) {
-          localStorage.setItem('jacky-body-tracker-private-scans', JSON.stringify(scans || []));
-          location.reload();
-        },
-        clear() {
-          localStorage.removeItem('jacky-body-tracker-private-scans');
-          location.reload();
-        }
-      };
 
       document.open();
       document.write(source);

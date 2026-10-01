@@ -1,0 +1,57 @@
+name: Append Fitdays Scan
+
+on:
+  workflow_dispatch:
+    inputs:
+      scan_json:
+        description: 'One Fitdays scan JSON object'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: append-fitdays-scan
+  cancel-in-progress: false
+
+jobs:
+  append:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Write workflow input
+        env:
+          SCAN_JSON: ${{ inputs.scan_json }}
+        run: |
+          node -e "require('fs').writeFileSync('.scan-input.json', process.env.SCAN_JSON + '\n')"
+
+      - name: Append and validate scan
+        run: |
+          node scripts/add-fitdays-scan.mjs .scan-input.json
+          node scripts/validate-scans.mjs
+          node scripts/validate-tracker.mjs
+          rm -f .scan-input.json
+
+      - name: Commit scan
+        run: |
+          if git diff --quiet -- data/scans.ndjson; then
+            echo "No scan changes to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/scans.ndjson
+          git commit -m "Add Fitdays scan via workflow"
+          git push origin HEAD:main

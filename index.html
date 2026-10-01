@@ -19,11 +19,32 @@
       Promise.all(files.map(file => readText(file))),
       readText('data/scans.ndjson', 'no-cache').catch(() => '')
     ]).then(([parts, scanText]) => {
-      const extraScans = String(scanText)
+      const repoScans = String(scanText)
         .split(/\r?\n/)
         .map(line => line.trim())
         .filter(Boolean)
         .map(line => JSON.parse(line));
+
+      // Sensitive scan updates can be stored locally in the browser instead of
+      // committing raw health data to the public GitHub repository.
+      const localScans = (() => {
+        try {
+          const raw = localStorage.getItem('jacky-body-tracker-private-scans');
+          return raw ? JSON.parse(raw) : [];
+        } catch (error) {
+          console.warn('Cannot read local scan data', error);
+          return [];
+        }
+      })();
+
+      const merged = new Map();
+      [...repoScans, ...localScans].forEach(scan => {
+        const key = scan.measuredAt || scan.sourceFile || scan.isoDate;
+        if (key) merged.set(key, scan);
+      });
+      const extraScans = [...merged.values()].sort((a, b) =>
+        String(a.measuredAt || a.isoDate).localeCompare(String(b.measuredAt || b.isoDate))
+      );
 
       let source = parts.join('');
       if (extraScans.length) {
@@ -52,6 +73,26 @@
         '<script src="assets/trend-rebuild.js?v=' + assetVersion + '"></' + 'script>' +
         '<script src="assets/detail-range-sync.js?v=' + assetVersion + '"></' + 'script></body>'
       );
+
+      // Add a tiny local-data bridge before rendering the legacy app. It keeps
+      // future sensitive scans on this device while preserving the existing UI.
+      window.JACKY_BODY_TRACKER_LOCAL = {
+        get() {
+          try {
+            return JSON.parse(localStorage.getItem('jacky-body-tracker-private-scans') || '[]');
+          } catch (_) {
+            return [];
+          }
+        },
+        set(scans) {
+          localStorage.setItem('jacky-body-tracker-private-scans', JSON.stringify(scans || []));
+          location.reload();
+        },
+        clear() {
+          localStorage.removeItem('jacky-body-tracker-private-scans');
+          location.reload();
+        }
+      };
 
       document.open();
       document.write(source);

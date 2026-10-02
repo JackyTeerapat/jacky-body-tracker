@@ -15,59 +15,15 @@
       if (!response.ok) throw new Error(file);
       return response.text();
     };
-
-    const PRIVATE_SCAN_API = 'https://qpecjtrwfuzdwrwksbdk.supabase.co/rest/v1/private_scans?select=scan&order=measured_at.asc';
-    const PRIVATE_SCAN_KEY = 'sb_publishable_CucV7UnkqE7qTfnyr1rKqQ_qg-v_Zd7';
-    const PRIVATE_ACCESS_STORAGE = 'jacky-body-tracker-access-key';
-
-    const readPrivateScans = async () => {
-      let accessKey = localStorage.getItem(PRIVATE_ACCESS_STORAGE) || '';
-      if (!accessKey) {
-        accessKey = window.prompt('กรอกรหัส Private Body Tracker เพื่อโหลดข้อมูลล่าสุด') || '';
-        if (!accessKey) return [];
-        localStorage.setItem(PRIVATE_ACCESS_STORAGE, accessKey);
-      }
-
-      const response = await fetch(PRIVATE_SCAN_API, {
-        cache: 'no-store',
-        headers: {
-          apikey: PRIVATE_SCAN_KEY,
-          'x-tracker-key': accessKey
-        }
-      });
-
-      if (response.status === 401 || response.status === 403) {
-        localStorage.removeItem(PRIVATE_ACCESS_STORAGE);
-        console.warn('Private Body Tracker access key rejected');
-        return [];
-      }
-      if (!response.ok) throw new Error('Private scan API');
-      const rows = await response.json();
-      return rows.map(row => row.scan).filter(Boolean);
-    };
-
     Promise.all([
       Promise.all(files.map(file => readText(file))),
-      readText('data/scans.ndjson', 'no-cache').catch(() => ''),
-      readPrivateScans().catch(error => {
-        console.warn(error);
-        return [];
-      })
-    ]).then(([parts, scanText, privateScans]) => {
-      const repoScans = String(scanText)
+      readText('data/scans.ndjson', 'no-cache').catch(() => '')
+    ]).then(([parts, scanText]) => {
+      const extraScans = String(scanText)
         .split(/\r?\n/)
         .map(line => line.trim())
         .filter(Boolean)
         .map(line => JSON.parse(line));
-
-      const mergedScans = new Map();
-      [...repoScans, ...privateScans].forEach(scan => {
-        const key = scan.measuredAt || scan.sourceFile || scan.isoDate;
-        if (key) mergedScans.set(key, scan);
-      });
-      const extraScans = [...mergedScans.values()].sort((a, b) =>
-        String(a.measuredAt || a.isoDate).localeCompare(String(b.measuredAt || b.isoDate))
-      );
 
       let source = parts.join('');
       if (extraScans.length) {

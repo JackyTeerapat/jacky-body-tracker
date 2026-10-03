@@ -66,8 +66,9 @@
       return {cls:'bad',label:'ยังไม่ลง'};
     }
     if(mode==='muscle'){
-      if(delta>=MUSCLE_GOAL_MIN) return {cls:'good',label:'ผ่านเป้า'};
-      if(delta>-0.20) return {cls:'warn',label:'ต่ำกว่าเป้า'};
+      if(delta>0.005) return {cls:'good',label:'บวก · ตรงเป้าหมาย'};
+      if(delta>=MUSCLE_GOAL_MIN) return {cls:'good',label:'0 · ผ่านขั้นต่ำ'};
+      if(delta>-0.20) return {cls:'warn',label:'ติดลบ · ต่ำกว่าเป้า'};
       return {cls:'bad',label:'ต้องเฝ้าระวัง'};
     }
     if(mode==='fat'){
@@ -218,7 +219,7 @@
             <li><b>Calories:</b> คงเดิม — ไม่ลดเพิ่มในตอนนี้</li>
             <li><b>Protein:</b> 140–150 g/day</li>
             <li><b>Weight target:</b> ลดเฉลี่ย 0.30–0.50 kg/week</li>
-            <li><b>Muscle target:</b> 0 หรือบวก (รักษา weekly avg อย่างน้อยให้ทรงตัว)</li>
+            <li><b>Muscle target:</b> เป้าหมายคือ <b>บวก</b> · ขั้นต่ำที่ยอมรับได้คือ 0 (weekly avg)</li>
             <li><b>Training:</b> ${ctx.action || 'รักษา intensity แต่ไม่เพิ่ม fatigue ถ้า recovery ยังไม่เต็ม'}</li>
           </ul>
         </div>
@@ -227,7 +228,7 @@
           <ul>
             <li>Weight avg เปลี่ยน ${signed(d.weight)} — ${wm.label}</li>
             <li>Fat avg เปลี่ยน ${signed(d.fat)} — ${fm.label}</li>
-            <li>Muscle avg เปลี่ยน ${signed(d.muscle)} — เป้าคือ ≥ 0</li>
+            <li>Muscle avg เปลี่ยน ${signed(d.muscle)} — เป้าหมายคือ > 0 · 0 = ผ่านขั้นต่ำ</li>
             <li>Water avg เปลี่ยน ${signed(d.water)}</li>
             ${ctx.note ? `<li><b>Recovery:</b> ${ctx.note}</li>` : ''}
           </ul>
@@ -235,7 +236,7 @@
       </div>
 
       <div class="s-coach-rule">
-        <div><b>🟢 GREEN</b>Weight −0.30 ถึง −0.50 kg/wk + Muscle ≥ 0 + recovery ปกติ</div>
+        <div><b>🟢 GREEN</b>Weight −0.30 ถึง −0.50 kg/wk + Muscle ≥ 0 + recovery ปกติ · ถ้า Muscle > 0 ถือว่าได้ตามเป้าหมายเต็ม</div>
         <div><b>🟡 YELLOW</b>Muscle ติดลบ / recovery แย่ / น้ำหนักออกนอกช่วง → ห้ามเพิ่ม deficit</div>
         <div><b>🔴 RED</b>เข้าเกณฑ์ยืนยัน muscle loss ที่ล็อกไว้ → เพิ่มอาหาร/ลด fatigue และทบทวน cut</div>
       </div>

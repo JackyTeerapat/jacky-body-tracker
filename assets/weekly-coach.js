@@ -108,7 +108,7 @@
     // During a calibration transition, fall back to dated daily observations
     // WITHIN the newest continuous calibration era; never bridge old/new settings.
     if(fatRate===null){
-      const all=W.D.filter(x=>x.isoDate<=W.latest.isoDate);
+      const all=W.D.filter(x=>x.isoDate<=last.end);
       const height=Number(all.at(-1)?.height);
       const daily=[];
       for(let i=all.length-1;i>=0;i--){
@@ -223,7 +223,7 @@
     section.className=`s-weekly-coach ${state.level}`;
 
     const weekLabel=`${iso(W.start).slice(5).replace('-','/')}–${iso(W.end).slice(5).replace('-','/')}`;
-    const periodLabel=W.closed?'ปิดสัปดาห์แล้ว':'Preview · ไม่ใช้ตัดสิน';
+    const periodLabel=W.closed?'ปิดสัปดาห์แล้ว':'Preview · ประเมินจากสัปดาห์ปิด';
 
     section.innerHTML=`
       <div class="s-coach-head">

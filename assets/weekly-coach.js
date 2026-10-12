@@ -65,7 +65,7 @@
   }
 
   function meta(delta, mode){
-    if(!Number.isFinite(delta)) return {cls:'neutral',label:'ข้อมูลไม่พอ'};
+    if(!Number.isFinite(delta)) return {cls:'neutral',label:'รอฐานเทียบที่ตรงกัน'};
     if(mode==='loss'){
       const loss=-delta;
       if(loss>=TARGET_LOSS_MIN && loss<=TARGET_LOSS_MAX) return {cls:'good',label:'เข้าเป้า'};
@@ -92,7 +92,6 @@
     const last=hist.at(-1);
     const previous=hist.at(-2);
     const recent=hist.slice(-4);
-    const stable=last && last.heights.length===1 ? hist.filter(x=>x.heights.length===1&&x.heights[0]===last.heights[0]&&x.start>=last.start.slice(0,7)+'-01') : [];
     // Find the continuous calibration era, not just the matching numeric height.
     const era=[];
     if(last&&last.heights.length===1){
@@ -102,9 +101,34 @@
       }
     }
     const weightRate=recent.length>=2?(recent.at(-1).data.weight-recent[0].data.weight)/(recent.length-1):null;
-    const fatRate=era.length>=2?(era.at(-1).data.fat-era[0].data.fat)/(era.length-1):null;
-    const muscleRate=era.length>=2?(era.at(-1).data.muscle-era[0].data.muscle)/(era.length-1):null;
-    const waterRate=era.length>=2?(era.at(-1).data.water-era[0].data.water)/(era.length-1):null;
+    let fatRate=era.length>=2?(era.at(-1).data.fat-era[0].data.fat)/(era.length-1):null;
+    let muscleRate=era.length>=2?(era.at(-1).data.muscle-era[0].data.muscle)/(era.length-1):null;
+    let waterRate=era.length>=2?(era.at(-1).data.water-era[0].data.water)/(era.length-1):null;
+    let eraNote=era.length>=2?'BIA เทียบ '+era.length+' สัปดาห์ใน calibration เดียวกัน':'';
+    // During a calibration transition, fall back to dated daily observations
+    // WITHIN the newest continuous calibration era; never bridge old/new settings.
+    if(fatRate===null){
+      const all=W.D.filter(x=>x.isoDate<=W.latest.isoDate);
+      const height=Number(all.at(-1)?.height);
+      const daily=[];
+      for(let i=all.length-1;i>=0;i--){
+        if(Number(all[i].height)!==height) break;
+        daily.unshift(all[i]);
+      }
+      if(daily.length>=6){
+        const n=Math.min(4,Math.floor(daily.length/2));
+        const first=daily.slice(0,n), lastDays=daily.slice(-n);
+        const dayNumber=x=>dt(x.isoDate).getTime()/MS;
+        const between=avg(lastDays.map(dayNumber))-avg(first.map(dayNumber));
+        if(between>0){
+          const rate=(key)=> (avg(lastDays.map(x=>x[key]))-avg(first.map(x=>x[key])))*7/between;
+          fatRate=rate('fat');
+          muscleRate=rate('muscle');
+          waterRate=rate('waterWeight');
+          eraNote='BIA เปรียบเทียบค่าเฉลี่ย '+n+' วันต้นช่วงกับ '+n+' วันท้ายช่วง ภายในส่วนสูง '+height+' cm (อัตราเทียบต่อสัปดาห์; เป็นแนวโน้มระยะสั้น)';
+        }
+      }
+    }
     const context=WEEK_CONTEXT[last?.start]||{};
     const recovering=!!context.recoveryConcern;
     let level='yellow',icon='🟡',title='Monitor trend',summary='รักษาแผนเดิมและดูแนวโน้มย้อนหลัง';
@@ -117,7 +141,7 @@
     }else{
       title='Review energy balance';summary='แนวโน้มน้ำหนักย้อนหลังทรงตัว/เพิ่ม · ตรวจปริมาณอาหารและกิจกรรมก่อนเปลี่ยนแผน';
     }
-    const eraNote=era.length>=2?'BIA เปรียบเทียบเฉพาะ '+era.length+' สัปดาห์ใน calibration เดียวกัน':'BIA ยังไม่มีสัปดาห์ปิดที่เทียบกันได้ใน calibration ล่าสุด';
+
     return {level,icon,title,summary,weightRate,fatRate,muscleRate,waterRate,eraNote,histCount:hist.length,context,anchor:last};
   }
 

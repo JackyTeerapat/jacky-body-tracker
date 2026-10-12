@@ -43,7 +43,15 @@
     const prevStart=shift(prevEnd,-6);
     const current=D.filter(x=>x.isoDate>=iso(start)&&x.isoDate<=latest.isoDate);
     const previous=D.filter(x=>x.isoDate>=iso(prevStart)&&x.isoDate<=iso(prevEnd));
-    return {D,latest,start,end,prevStart,prevEnd,current,previous,closed:latest.isoDate>=iso(end)};
+    const closed=latest.isoDate>=iso(end);
+    const history=[];
+    for(let cursor=weekStart(D[0].isoDate);cursor<start;cursor=shift(cursor,7)){
+      const endDate=shift(cursor,6);
+      const r=D.filter(x=>x.isoDate>=iso(cursor)&&x.isoDate<=iso(endDate));
+      if(r.length>=4) history.push({start:iso(cursor),end:iso(endDate),count:r.length,heights:[...new Set(r.map(x=>Number(x.height)))],data:stats(r)});
+    }
+    if(closed&&current.length>=4) history.push({start:iso(start),end:iso(end),count:current.length,heights:[...new Set(current.map(x=>Number(x.height)))],data:stats(current)});
+    return {D,latest,start,end,prevStart,prevEnd,current,previous,closed,history};
   }
 
   function stats(rows){
@@ -77,31 +85,40 @@
     return {cls:'neutral',label:'—'};
   }
 
-  function statusFor(W,d){
-    const ctx=WEEK_CONTEXT[iso(W.start)] || {};
-    const weight=meta(d.weight,'loss');
-    const muscle=meta(d.muscle,'muscle');
-
-    // Red is intentionally reserved for a stronger multi-week confirmation rule;
-    // one partial week cannot trigger it by itself.
-    if(muscle.cls==='bad' || ctx.recoveryConcern) return {
-      level:'yellow',
-      icon:'🟡',
-      title:'Muscle Preservation / Recovery',
-      summary:'ลดน้ำหนักได้ตามแผน แต่กล้าม/การฟื้นตัวยังไม่ดีพอ จึงห้ามเพิ่ม deficit'
-    };
-    if(weight.cls==='good' && muscle.cls==='good') return {
-      level:'green',
-      icon:'🟢',
-      title:'On Track',
-      summary:'น้ำหนักลงในช่วงเป้าและกล้ามยังรักษาได้ ทำแผนเดิมต่อ'
-    };
-    return {
-      level:'yellow',
-      icon:'🟡',
-      title:'Adjust, don’t accelerate',
-      summary:'ยังไม่ครบทุกเงื่อนไขของสัปดาห์ที่ดี จึงยังไม่ควรเร่ง deficit'
-    };
+  // Coaching uses completed historical weeks. A partial week is a preview only.
+  // Weight is measured directly; BIA fat/muscle/water must stay within one calibration era.
+  function assess(W){
+    const hist=W.history;
+    const last=hist.at(-1);
+    const previous=hist.at(-2);
+    const recent=hist.slice(-4);
+    const stable=last && last.heights.length===1 ? hist.filter(x=>x.heights.length===1&&x.heights[0]===last.heights[0]&&x.start>=last.start.slice(0,7)+'-01') : [];
+    // Find the continuous calibration era, not just the matching numeric height.
+    const era=[];
+    if(last&&last.heights.length===1){
+      for(let i=hist.length-1;i>=0;i--){
+        if(hist[i].heights.length!==1||hist[i].heights[0]!==last.heights[0]) break;
+        era.unshift(hist[i]);
+      }
+    }
+    const weightRate=recent.length>=2?(recent.at(-1).data.weight-recent[0].data.weight)/(recent.length-1):null;
+    const fatRate=era.length>=2?(era.at(-1).data.fat-era[0].data.fat)/(era.length-1):null;
+    const muscleRate=era.length>=2?(era.at(-1).data.muscle-era[0].data.muscle)/(era.length-1):null;
+    const waterRate=era.length>=2?(era.at(-1).data.water-era[0].data.water)/(era.length-1):null;
+    const context=WEEK_CONTEXT[last?.start]||{};
+    const recovering=!!context.recoveryConcern;
+    let level='yellow',icon='🟡',title='Monitor trend',summary='รักษาแผนเดิมและดูแนวโน้มย้อนหลัง';
+    if(Number.isFinite(weightRate)&&weightRate<=-TARGET_LOSS_MIN&&weightRate>=-TARGET_LOSS_MAX&&!recovering&&(muscleRate===null||muscleRate>=-0.20)){
+      level='green';icon='🟢';title='On Track';summary='น้ำหนักเฉลี่ยหลายสัปดาห์ลดตามเป้า · ไม่พบสัญญาณเตือนการฟื้นตัว';
+    }else if(recovering){
+      title='Recovery first';summary='มีข้อมูลว่าฟื้นตัวไม่เต็ม ควรลด fatigue ก่อนเร่งลดอาหาร';
+    }else if(Number.isFinite(weightRate)&&weightRate<0){
+      title='Progress continues';summary='น้ำหนักเฉลี่ยย้อนหลังยังลดอยู่ · ไม่ต้องเร่ง deficit จากสัปดาห์เดียว';
+    }else{
+      title='Review energy balance';summary='แนวโน้มน้ำหนักย้อนหลังทรงตัว/เพิ่ม · ตรวจปริมาณอาหารและกิจกรรมก่อนเปลี่ยนแผน';
+    }
+    const eraNote=era.length>=2?'BIA เปรียบเทียบเฉพาะ '+era.length+' สัปดาห์ใน calibration เดียวกัน':'BIA ยังไม่มีสัปดาห์ปิดที่เทียบกันได้ใน calibration ล่าสุด';
+    return {level,icon,title,summary,weightRate,fatRate,muscleRate,waterRate,eraNote,histCount:hist.length,context,anchor:last};
   }
 
   function addStyle(){
@@ -158,16 +175,21 @@
     const W=weekData();
     if(!W||!W.current.length||!W.previous.length) return false;
     const C=stats(W.current), P=stats(W.previous);
+    const analysis=assess(W);
+    const anchor=analysis.anchor;
+    if(!anchor)return false;
+    const previousAnchor=W.history.at(-2);
+    const comparable=previousAnchor&&anchor.heights.length===1&&previousAnchor.heights.length===1&&anchor.heights[0]===previousAnchor.heights[0];
     const d={
-      weight:C.weight-P.weight,
-      fat:C.fat-P.fat,
-      bf:C.bf-P.bf,
-      muscle:C.muscle-P.muscle,
-      water:C.water-P.water
+      weight:previousAnchor?anchor.data.weight-previousAnchor.data.weight:null,
+      fat:comparable?anchor.data.fat-previousAnchor.data.fat:null,
+      bf:comparable?anchor.data.bf-previousAnchor.data.bf:null,
+      muscle:comparable?anchor.data.muscle-previousAnchor.data.muscle:null,
+      water:comparable?anchor.data.water-previousAnchor.data.water:null
     };
-    const wm=meta(d.weight,'loss'), fm=meta(d.fat,'fat'), mm=meta(d.muscle,'muscle');
-    const state=statusFor(W,d);
-    const ctx=WEEK_CONTEXT[iso(W.start)]||{};
+    const wm=meta(analysis.weightRate,'loss'),fm=meta(analysis.fatRate,'fat'),mm=meta(analysis.muscleRate,'muscle');
+    const state=analysis;
+    const ctx=state.context;
 
     let section=wrap.querySelector('.s-weekly-coach');
     if(!section){
@@ -177,7 +199,7 @@
     section.className=`s-weekly-coach ${state.level}`;
 
     const weekLabel=`${iso(W.start).slice(5).replace('-','/')}–${iso(W.end).slice(5).replace('-','/')}`;
-    const periodLabel=W.closed?'ปิดสัปดาห์แล้ว':'Preview · สัปดาห์ยังไม่ปิด';
+    const periodLabel=W.closed?'ปิดสัปดาห์แล้ว':'Preview · ไม่ใช้ตัดสิน';
 
     section.innerHTML=`
       <div class="s-coach-head">
@@ -192,33 +214,33 @@
       <div class="s-coach-metrics">
         <div class="s-coach-metric">
           <small>Weight avg</small>
-          <strong>${f2(C.weight)} kg</strong>
-          <span class="s-coach-pill ${wm.cls}">${signed(d.weight)} · ${wm.label}</span>
+          <strong>${f2(anchor.data.weight)} kg</strong>
+          <span class="s-coach-pill ${wm.cls}">${signed(state.weightRate)} /wk · ${wm.label}</span>
         </div>
         <div class="s-coach-metric">
           <small>Fat avg</small>
-          <strong>${f2(C.fat)} kg</strong>
-          <span class="s-coach-pill ${fm.cls}">${signed(d.fat)} · ${fm.label}</span>
+          <strong>${f2(anchor.data.fat)} kg</strong>
+          <span class="s-coach-pill ${fm.cls}">${signed(state.fatRate)} /wk · ${fm.label}</span>
         </div>
         <div class="s-coach-metric">
           <small>Muscle avg</small>
-          <strong>${f2(C.muscle)} kg</strong>
-          <span class="s-coach-pill ${mm.cls}">${signed(d.muscle)} · ${mm.label}</span>
+          <strong>${f2(anchor.data.muscle)} kg</strong>
+          <span class="s-coach-pill ${mm.cls}">${signed(state.muscleRate)} /wk · ${mm.label}</span>
         </div>
         <div class="s-coach-metric">
           <small>Water avg</small>
-          <strong>${f2(C.water)} kg</strong>
-          <span class="s-coach-pill neutral">${signed(d.water)}</span>
+          <strong>${f2(anchor.data.water)} kg</strong>
+          <span class="s-coach-pill neutral">${signed(state.waterRate)} /wk</span>
         </div>
       </div>
 
       <div class="s-coach-plan">
         <div class="s-coach-box">
-          <h3>คำสั่งสัปดาห์ถัดไป</h3>
+          <h3>คำแนะนำจาก ${state.histCount} สัปดาห์ปิดล่าสุด · ถึง ${anchor.end}</h3>
           <ul>
-            <li><b>Calories:</b> คงเดิม — ไม่ลดเพิ่มในตอนนี้</li>
+            <li><b>Calories:</b> ${Number.isFinite(state.weightRate)&&state.weightRate>=0?'ตรวจอาหารที่กินจริงก่อนพิจารณาปรับพลังงาน':'คงเดิมก่อน ไม่เร่งลดจากความผันผวนระยะสั้น'}</li>
             <li><b>Protein:</b> 140–150 g/day</li>
-            <li><b>Weight target:</b> ลดเฉลี่ย 0.30–0.50 kg/week</li>
+            <li><b>Fat target:</b> ให้ Fat Mass ระยะยาวลด และรักษาแรงยก · เป้าน้ำหนัก −0.30 ถึง −0.50 kg/week เป็นตัวช่วย</li>
             <li><b>Muscle target:</b> เป้าหมายคือ <b>บวก</b> · ขั้นต่ำที่ยอมรับได้คือ 0 (weekly avg)</li>
             <li><b>Training:</b> ${ctx.action || 'รักษา intensity แต่ไม่เพิ่ม fatigue ถ้า recovery ยังไม่เต็ม'}</li>
           </ul>
@@ -226,10 +248,10 @@
         <div class="s-coach-box">
           <h3>เหตุผลของสถานะนี้</h3>
           <ul>
-            <li>Weight avg เปลี่ยน ${signed(d.weight)} — ${wm.label}</li>
-            <li>Fat avg เปลี่ยน ${signed(d.fat)} — ${fm.label}</li>
-            <li>Muscle avg เปลี่ยน ${signed(d.muscle)} — เป้าหมายคือ > 0 · 0 = ผ่านขั้นต่ำ</li>
-            <li>Water avg เปลี่ยน ${signed(d.water)}</li>
+            <li>Weight trend ${signed(state.weightRate)} /week จาก ${Math.min(state.histCount,4)} สัปดาห์ปิดล่าสุด</li>
+            <li>Fat trend ${signed(state.fatRate)} /week · ${state.eraNote}</li>
+            <li>Muscle trend ${signed(state.muscleRate)} /week · BIA ขึ้นกับน้ำและแรงยก</li>
+            <li>Water trend ${signed(state.waterRate)} /week</li>
             ${ctx.note ? `<li><b>Recovery:</b> ${ctx.note}</li>` : ''}
           </ul>
         </div>
@@ -241,7 +263,7 @@
         <div><b>🔴 RED</b>เข้าเกณฑ์ยืนยัน muscle loss ที่ล็อกไว้ → เพิ่มอาหาร/ลด fatigue และทบทวน cut</div>
       </div>
 
-      <div class="s-coach-foot">เป้าลด 0.30–0.50 kg/week ใช้กับแนวโน้มน้ำหนักเฉลี่ย; Fat Mass จาก BIA ใช้เป็น trend ประกอบ ไม่บังคับว่าต้องลด 0.50 kg ไขมันทุกสัปดาห์ · Weekly Coach ใช้ค่าเฉลี่ยเทียบสัปดาห์ก่อน</div>
+      <div class="s-coach-foot">เป้าลด 0.30–0.50 kg/week ใช้กับแนวโน้มน้ำหนักเฉลี่ย; Fat Mass จาก BIA ใช้เป็น trend ประกอบ ไม่บังคับว่าต้องลด 0.50 kg ไขมันทุกสัปดาห์ · Weekly Coach ใช้สัปดาห์ปิดย้อนหลัง W−1…W−X; สัปดาห์ปัจจุบันเป็น Preview ไม่ใช่คำสั่ง</div>
     `;
 
     checkpoint.insertAdjacentElement('beforebegin',section);

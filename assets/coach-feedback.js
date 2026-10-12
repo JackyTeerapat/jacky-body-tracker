@@ -23,7 +23,11 @@
       const rows=D.filter(x=>x.isoDate>=start&&x.isoDate<=end);
       if(rows.length<4)continue;
       const heights=[...new Set(rows.map(x=>Number(x.height)))];
-      weeks.push({start,end,n:rows.length,weight:avg(rows.map(x=>Number(x.weight))),fat:avg(rows.map(x=>Number(x.fat))),muscle:avg(rows.map(x=>Number(x.muscle))),water:avg(rows.map(x=>Number(x.waterWeight))),height:heights.length===1?heights[0]:null});
+      const sameHeight=heights.length===1;
+      const lows=rows.reduce((best,x)=>Number(x.fat)<Number(best.fat)?x:best,rows[0]);
+      const highs=rows.reduce((best,x)=>Number(x.fat)>Number(best.fat)?x:best,rows[0]);
+      const peakRise=rows.reduce((best,x,i)=>Math.max(best,...rows.slice(0,i).filter(y=>Number(y.height)===Number(x.height)).map(y=>Number(x.fat)-Number(y.fat))),0);
+      weeks.push({start,end,n:rows.length,weight:avg(rows.map(x=>Number(x.weight))),fat:avg(rows.map(x=>Number(x.fat))),muscle:avg(rows.map(x=>Number(x.muscle))),water:avg(rows.map(x=>Number(x.waterWeight))),height:sameHeight?heights[0]:null,peakRise:sameHeight?peakRise:null,minFat:Number(lows.fat),maxFat:Number(highs.fat),minDate:lows.isoDate,maxDate:highs.isoDate});
     }
     if(weeks.length<2)return null;
     let previous=null;
@@ -58,7 +62,14 @@
         else evaluation+=' · ไม่เทียบ BIA ข้าม calibration';
         comparison=previous.id===id?'คง A (A → A)':improved&&previous.id==='TRACK'?'แนวโน้มเข้าเป้า; เปลี่ยนเป็นคงแผน (A → B)':slower&&previous.id==='KEEP'?'ออกนอกเป้า; ปรับเป็นติดตามอาหาร (A → B)':'ปรับคำแนะนำตามแนวโน้ม (A → B)';
       }
-      const entry={start:w.start,end:w.end,days:w.n,weight:w.weight,weightSlope,fat:w.fat,muscle:w.muscle,water:w.water,id,action,reason,evaluation,comparison,previousAction:previous?.action||null};
+      const spike=Number.isFinite(w.peakRise)&&w.peakRise>=0.7;
+      const weekFatChange=sameHeight?w.fat-prior.fat:null;
+      const spikeNote=spike?'ไขมัน BIA ภายในสัปดาห์เพิ่มจากจุดต่ำสุดก่อนหน้าอย่างน้อย +'+f(w.peakRise)+' kg แม้ค่าเฉลี่ยทั้งสัปดาห์อาจไม่ได้เพิ่ม':'';
+      if(spike){
+        reason+=(reason?' · ':'')+spikeNote;
+        action+='; ตรวจค่าเฉลี่ยและน้ำในร่างกาย ไม่ปรับแผนเพราะวันที่ไขมันพุ่งวันเดียว';
+      }
+      const entry={start:w.start,end:w.end,days:w.n,weight:w.weight,weightSlope,fat:w.fat,muscle:w.muscle,water:w.water,weekFatChange,peakRise:w.peakRise,spikeNote,id,action,reason,evaluation,comparison,previousAction:previous?.action||null};
       previous=entry;
       return entry;
     });
@@ -78,6 +89,7 @@
           <div><b>วิเคราะห์อิสระ:</b> น้ำหนักเฉลี่ย ${f(x.weight)} kg · Trend ${f(x.weightSlope)} kg/week (${x.days} วันชั่ง)</div>
           <div><b>คำแนะนำเดิม A:</b> ${esc(x.previousAction||'ไม่มี')}</div>
           <div><b>ผลที่เกิดขึ้น:</b> ${esc(x.evaluation)}</div>
+          <div><b>ไขมันรายสัปดาห์:</b> ${Number.isFinite(x.weekFatChange)?(x.weekFatChange>=0?'+':'')+f(x.weekFatChange)+' kg เมื่อเทียบสัปดาห์ก่อน':'ไม่เทียบค่าเฉลี่ย BIA ข้ามการตั้งค่าส่วนสูง'} · <b>พุ่งระหว่างสัปดาห์:</b> ${Number.isFinite(x.peakRise)?'+'+f(x.peakRise)+' kg':'สัปดาห์มีการเปลี่ยน calibration'}</div>
           <div><b>คำแนะนำใหม่ B:</b> ${esc(x.action)}</div>
           <div><b>เหตุผล:</b> ${esc(x.reason)}</div>
         </div>
@@ -89,6 +101,7 @@
       <div style="font-size:10px;font-weight:900;letter-spacing:.08em;color:#607c73">COACH FEEDBACK LOOP · EXPERIMENTAL</div>
       <h3 style="font-size:15px;margin:6px 0">วิเคราะห์อดีต → ทบทวน A → เลือก B สำหรับวันนี้</h3>
       <p style="font-size:11px;line-height:1.6;margin:5px 0"><b>คำแนะนำวันนี้จากข้อมูลปิดสัปดาห์:</b> ${esc(last.action)}</p>
+      <p style="font-size:11px;line-height:1.6;margin:5px 0"><b>ตรวจไขมันสัปดาห์ล่าสุด:</b> ${Number.isFinite(last.peakRise)?'เคยพุ่งระหว่างสัปดาห์ +'+f(last.peakRise)+' kg':'ข้อมูลช่วงเปลี่ยน calibration'} · ${Number.isFinite(last.weekFatChange)?'ค่าเฉลี่ยเทียบสัปดาห์ก่อน '+(last.weekFatChange>=0?'+':'')+f(last.weekFatChange)+' kg':'ค่าเฉลี่ยเทียบข้าม calibration ไม่ได้'}</p>
       <p style="font-size:10px;line-height:1.6;color:#63746f;margin:5px 0">${esc(last.reason)} · ย้อนดู ${log.length} สัปดาห์ที่มีอย่างน้อย 4 วันชั่ง</p>
       <p style="font-size:10px;line-height:1.6;color:#856222;margin:7px 0">ประวัติด้านล่างเป็นการจำลองย้อนหลังด้วยกฎปัจจุบัน ไม่ใช่คำแนะนำที่เคยส่งจริง และยังไม่ได้ยืนยันว่าทำตาม A; ผลที่เห็นไม่ใช่หลักฐานว่า A เป็นสาเหตุ</p>
       <div style="font-size:11px;font-weight:900;margin-top:10px">Review A → B · ย้อนหลัง 6 สัปดาห์</div>

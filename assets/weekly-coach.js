@@ -255,6 +255,20 @@
     };
     const wm=meta(analysis.weightRate,'loss'),fm=meta(analysis.fatRate,'fat'),mm=meta(analysis.muscleRate,'muscle');
     const state=analysis;
+    // A same-calibration in-week fat spike is explicitly reported even if the
+    // weekly average later falls. Do not mislabel it as weekly fat gain.
+    const lastClosedRows=W.D.filter(x=>x.isoDate>=anchor.start&&x.isoDate<=anchor.end);
+    let peakFatRise=0;
+    for(let i=0;i<lastClosedRows.length;i++){
+      for(let j=i+1;j<lastClosedRows.length;j++){
+        if(Number(lastClosedRows[i].height)===Number(lastClosedRows[j].height)){
+          peakFatRise=Math.max(peakFatRise,Number(lastClosedRows[j].fat)-Number(lastClosedRows[i].fat));
+        }
+      }
+    }
+    const peakNote=peakFatRise>=0.7
+      ? 'BIA ไขมันเคยพุ่งระหว่างสัปดาห์ +'+f2(peakFatRise)+' kg แต่ไม่ใช่ไขมันเพิ่มจากค่าเฉลี่ย W−1 โดยตรง; ดูแนวโน้มย้อนหลังประกอบ'
+      : 'ไม่พบการพุ่งขึ้นของไขมัน BIA ภายในสัปดาห์ถึง +0.70 kg';
     const ctx=state.context;
 
     let section=wrap.querySelector('.s-weekly-coach');
@@ -318,6 +332,7 @@
             <li>Fat trend ${signed(state.fatRate)} /week · ${state.eraNote}</li>
             <li>Muscle trend ${signed(state.muscleRate)} /week · BIA ขึ้นกับน้ำและแรงยก</li>
             <li>Water trend ${signed(state.waterRate)} /week</li>
+            <li><b>In-week fat movement:</b> ${peakNote}</li>
             ${ctx.note ? `<li><b>Recovery:</b> ${ctx.note}</li>` : ''}
           </ul>
         </div>

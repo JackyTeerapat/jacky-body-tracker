@@ -100,7 +100,22 @@
         era.unshift(hist[i]);
       }
     }
-    const weightRate=recent.length>=2?(recent.at(-1).data.weight-recent[0].data.weight)/(recent.length-1):null;
+    // Adaptive lookback: work backwards from the present until a multi-week
+    // decision is supported. Do not defer an actionable diagnosis to future weeks.
+    // Linear regression is more robust than a first-vs-last comparison.
+    const slope=(values)=>{
+      if(values.length<2)return null;
+      const n=values.length, xm=(n-1)/2, ym=avg(values);
+      const den=values.reduce((a,_,i)=>a+(i-xm)**2,0);
+      return den ? values.reduce((a,v,i)=>a+(i-xm)*(v-ym),0)/den : null;
+    };
+    const horizons=[3,4,6,8].filter(n=>hist.length>=n);
+    const selected=horizons.length?horizons[horizons.length-1]:hist.length;
+    const chosen=hist.slice(-selected);
+    const weightRate=slope(chosen.map(w=>w.data.weight));
+    const recentRate=slope(hist.slice(-Math.min(3,hist.length)).map(w=>w.data.weight));
+    const longRate=slope(hist.map(w=>w.data.weight));
+    const fatContext=hist.slice(-Math.min(4,hist.length));
     let fatRate=era.length>=2?(era.at(-1).data.fat-era[0].data.fat)/(era.length-1):null;
     let muscleRate=era.length>=2?(era.at(-1).data.muscle-era[0].data.muscle)/(era.length-1):null;
     let waterRate=era.length>=2?(era.at(-1).data.water-era[0].data.water)/(era.length-1):null;
@@ -131,18 +146,45 @@
     }
     const context=WEEK_CONTEXT[last?.start]||{};
     const recovering=!!context.recoveryConcern;
-    let level='yellow',icon='🟡',title='Monitor trend',summary='รักษาแผนเดิมและดูแนวโน้มย้อนหลัง';
-    if(Number.isFinite(weightRate)&&weightRate<=-TARGET_LOSS_MIN&&weightRate>=-TARGET_LOSS_MAX&&!recovering&&(muscleRate===null||muscleRate>=-0.20)){
-      level='green';icon='🟢';title='On Track';summary='น้ำหนักเฉลี่ยหลายสัปดาห์ลดตามเป้า · ไม่พบสัญญาณเตือนการฟื้นตัว';
-    }else if(recovering){
-      title='Recovery first';summary='มีข้อมูลว่าฟื้นตัวไม่เต็ม ควรลด fatigue ก่อนเร่งลดอาหาร';
-    }else if(Number.isFinite(weightRate)&&weightRate<0){
-      title='Progress continues';summary='น้ำหนักเฉลี่ยย้อนหลังยังลดอยู่ · ไม่ต้องเร่ง deficit จากสัปดาห์เดียว';
+    const recentStable=Number.isFinite(recentRate)&&recentRate>=-0.15;
+    const longStable=Number.isFinite(weightRate)&&weightRate>=-0.20;
+    const positive=Number.isFinite(weightRate)&&weightRate<=-TARGET_LOSS_MIN&&weightRate>=-TARGET_LOSS_MAX;
+    const tooFast=Number.isFinite(weightRate)&&weightRate < -TARGET_LOSS_MAX;
+    const lostMuscle=Number.isFinite(muscleRate)&&muscleRate < -0.20;
+    let level='yellow',icon='🟡',title='Trend review',summary='',calories='',training='';
+    if(recovering){
+      title='Recovery first';
+      summary='มีสัญญาณฟื้นตัวไม่ดี: จัดการความล้าตอนนี้ก่อนเพิ่มการฝึก';
+      calories='อย่าเร่งลดพลังงานในช่วงที่ฟื้นตัวไม่ดี';
+      training=context.action||'ลดปริมาณเซตชั่วคราวโดยรักษาความหนักที่ไหว';
+    }else if(tooFast||lostMuscle){
+      title='Protect muscle';
+      summary='แนวโน้มน้ำหนักลงเร็วหรือ BIA กล้ามลด: ป้องกันเสียกล้ามก่อน';
+      calories='ตรวจอาหารและโปรตีนที่กินจริง อย่าลดแคลอรีเพิ่ม';
+      training='รักษาแรงยก ลดเซตที่เกินความสามารถฟื้นตัว';
+    }else if(positive){
+      level='green';icon='🟢';title='On Track';
+      summary='อัตราลดน้ำหนักย้อนหลังอยู่ในเป้าหมาย: ทำแผนเดิมต่อได้เลย';
+      calories='คงพฤติกรรมการกินที่ทำอยู่ ไม่ต้องลดแคลอรีเพิ่ม';
+      training='คงเวทและ Cardio ที่ฟื้นตัวได้ พร้อมติดตามแรงยก';
+    }else if(Number.isFinite(weightRate)&&weightRate<0&&!longStable){
+      title='Slow but improving';
+      summary='ลดจริงในภาพย้อนหลัง แต่อัตรายังต่ำกว่าเป้าหมาย';
+      calories='เริ่มบันทึกอาหารและเครื่องดื่ม 7 วันตั้งแต่วันนี้ เพื่อหาแหล่งพลังงานที่ปรับได้; ไม่ตั้งแคลอรีขาดดุลจากการเดา';
+      training='คงเวทเพื่อรักษากล้าม เพิ่มการเดินอย่างค่อยเป็นค่อยไปเฉพาะถ้าฟื้นตัวไหว';
     }else{
-      title='Review energy balance';summary='แนวโน้มน้ำหนักย้อนหลังทรงตัว/เพิ่ม · ตรวจปริมาณอาหารและกิจกรรมก่อนเปลี่ยนแผน';
+      title='Act on plateau';
+      summary='ค่าเฉลี่ยย้อนหลังทรงตัวหรือขึ้น: ตรวจสมดุลพลังงานตั้งแต่วันนี้';
+      calories='เริ่มบันทึกอาหาร 7 วันและตรวจของว่าง/น้ำมัน/เครื่องดื่มวันนี้; ใช้ข้อมูลการกินจริงเลือกการปรับมื้ออาหาร';
+      training='คงแรงยก และตรวจจำนวนก้าว/กิจกรรมจริงก่อนเพิ่ม Cardio';
     }
-
-    return {level,icon,title,summary,weightRate,fatRate,muscleRate,waterRate,eraNote,histCount:hist.length,context,anchor:last};
+    const currentPreview=W.closed?'':(' · ข้อมูลสัปดาห์นี้ '+W.current.length+' วันใช้ประกอบการติดตาม แต่ไม่ลบผลย้อนหลัง');
+    summary+=currentPreview;
+    const usedWeeks=chosen.length;
+    const windowLabel=chosen.length?chosen[0].start+' ถึง '+chosen.at(-1).end:'';
+    // Retain calibration notes separately; never turn lack of like-for-like BIA
+    // into a reason not to make a weight-based recommendation today.
+    return {level,icon,title,summary,weightRate,recentRate,longRate,fatRate,muscleRate,waterRate,eraNote,histCount:hist.length,usedWeeks,windowLabel,calories,training,context,anchor:last};
   }
 
   function addStyle(){
@@ -197,7 +239,7 @@
     if(!wrap||!checkpoint) return false;
 
     const W=weekData();
-    if(!W||!W.current.length||!W.previous.length) return false;
+    if(!W||!W.current.length||!W.history.length) return false;
     const C=stats(W.current), P=stats(W.previous);
     const analysis=assess(W);
     const anchor=analysis.anchor;
@@ -260,19 +302,19 @@
 
       <div class="s-coach-plan">
         <div class="s-coach-box">
-          <h3>คำแนะนำจาก ${state.histCount} สัปดาห์ปิดล่าสุด · ถึง ${anchor.end}</h3>
+          <h3>ลงมือทำวันนี้ · วิเคราะห์ ${state.usedWeeks} สัปดาห์ (${state.windowLabel})</h3>
           <ul>
-            <li><b>Calories:</b> ${Number.isFinite(state.weightRate)&&state.weightRate>=0?'ตรวจอาหารที่กินจริงก่อนพิจารณาปรับพลังงาน':'คงเดิมก่อน ไม่เร่งลดจากความผันผวนระยะสั้น'}</li>
+            <li><b>Calories:</b> ${state.calories}</li>
             <li><b>Protein:</b> 140–150 g/day</li>
             <li><b>Fat target:</b> ให้ Fat Mass ระยะยาวลด และรักษาแรงยก · เป้าน้ำหนัก −0.30 ถึง −0.50 kg/week เป็นตัวช่วย</li>
             <li><b>Muscle target:</b> เป้าหมายคือ <b>บวก</b> · ขั้นต่ำที่ยอมรับได้คือ 0 (weekly avg)</li>
-            <li><b>Training:</b> ${ctx.action || 'รักษา intensity แต่ไม่เพิ่ม fatigue ถ้า recovery ยังไม่เต็ม'}</li>
+            <li><b>Training:</b> ${state.training}</li>
           </ul>
         </div>
         <div class="s-coach-box">
           <h3>เหตุผลของสถานะนี้</h3>
           <ul>
-            <li>Weight trend ${signed(state.weightRate)} /week จาก ${Math.min(state.histCount,4)} สัปดาห์ปิดล่าสุด</li>
+            <li>Weight trend ${signed(state.weightRate)} /week จาก ${state.usedWeeks} สัปดาห์ปิด · แนวโน้มสั้น ${signed(state.recentRate)} /week</li>
             <li>Fat trend ${signed(state.fatRate)} /week · ${state.eraNote}</li>
             <li>Muscle trend ${signed(state.muscleRate)} /week · BIA ขึ้นกับน้ำและแรงยก</li>
             <li>Water trend ${signed(state.waterRate)} /week</li>
@@ -287,7 +329,7 @@
         <div><b>🔴 RED</b>เข้าเกณฑ์ยืนยัน muscle loss ที่ล็อกไว้ → เพิ่มอาหาร/ลด fatigue และทบทวน cut</div>
       </div>
 
-      <div class="s-coach-foot">เป้าลด 0.30–0.50 kg/week ใช้กับแนวโน้มน้ำหนักเฉลี่ย; Fat Mass จาก BIA ใช้เป็น trend ประกอบ ไม่บังคับว่าต้องลด 0.50 kg ไขมันทุกสัปดาห์ · Weekly Coach ใช้สัปดาห์ปิดย้อนหลัง W−1…W−X; สัปดาห์ปัจจุบันเป็น Preview ไม่ใช่คำสั่ง</div>
+      <div class="s-coach-foot">เป้าลด 0.30–0.50 kg/week ใช้กับแนวโน้มน้ำหนักเฉลี่ย; Fat Mass จาก BIA ใช้เป็น trend ประกอบ ไม่บังคับว่าต้องลด 0.50 kg ไขมันทุกสัปดาห์ · Weekly Coach ใช้สัปดาห์ปิดย้อนหลัง W−1…W−X; สัปดาห์ปัจจุบันใช้เป็น Preview แต่คำแนะนำสำหรับวันนี้อ้างอิงข้อมูลย้อนหลังทันที</div>
     `;
 
     checkpoint.insertAdjacentElement('beforebegin',section);

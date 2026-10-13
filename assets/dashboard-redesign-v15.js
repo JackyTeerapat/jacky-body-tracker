@@ -24,15 +24,17 @@ function render(){
  }
  // A single trends and weekly-performance zone, followed by deep history.
  let performance=q('.r15-performance',w);
- if(!performance){performance=document.createElement('section');performance.className='r15-performance';performance.innerHTML='<div class="r15-section-heading"><div><small>PROGRESS ANALYTICS</small><h2>Weekly Performance</h2><p>ค่าเฉลี่ยและแนวโน้มย้อนหลัง — แยกจากผลชั่งรายวัน</p></div></div><div class="r15-performance-content"></div>';}
+ if(!performance){performance=document.createElement('section');performance.className='r15-performance';performance.innerHTML='<div class="r15-section-heading"><div><small>PROGRESS ANALYTICS</small><h2>BODY PERFORMANCE</h2><p>ข้อมูลย้อนหลังในจุดเดียว · เลือกรายวัน รายสัปดาห์ หรือรายเดือน</p></div></div><div class="r15-performance-content"></div>';}
  pair.insertAdjacentElement('afterend',performance);
  const area=q('.r15-performance-content',performance);
  if(weekly&&weekly.parentElement!==area)area.appendChild(weekly);
+ if(weekly)weekly.classList.add('r16-legacy-weekly');
  if(trend&&trend.parentElement!==area)area.appendChild(trend);
  // Independent trend builders may inject controls outside .s-trend-card.
  const controls=q('.s-range-controls',w);
  const trendContainer=controls?.closest('.s-trend-card');
  if(trendContainer&&trendContainer.parentElement!==area)area.appendChild(trendContainer);
+ const legacyCoach=trainer?.querySelector('.at-review');if(legacyCoach)legacyCoach.remove();
  const previews=w.querySelectorAll('.s-this-week-preview,.s-metric-goal-grid,.s-verdict');previews.forEach(el=>el.classList.add('r15-hide'));
  if(history){history.classList.add('r15-history');}
 }
@@ -83,6 +85,15 @@ function boot(){
  '#summary-app .v14-goal-panel .s-goal-remaining-grid{grid-template-columns:1fr!important}',
  '#summary-app .v14-goal-panel .s-goal-remaining-card{padding:15px!important}',
  '#summary-app .v14-goal-panel .v9-advanced{border-radius:13px!important;margin-top:14px!important}',
+ '#summary-app .r16-legacy-weekly,#summary-app .at-numbers,#summary-app .at-review{display:none!important}',
+ '#summary-app .r15-performance .s-trend-head{display:none!important}',
+ '#summary-app .r15-performance .s-period-selector{margin:0 0 16px!important;display:flex!important;gap:12px!important;align-items:center;flex-wrap:wrap}',
+ '#summary-app .r15-performance .tr2-root{margin-top:12px!important}',
+ '#summary-app .r15-performance .tr2-summary{background:#f7faf8!important;border:1px solid #e1eae5!important;padding:17px!important}',
+ '#summary-app .r15-performance .tr2-grid{gap:12px!important}',
+ '#summary-app .r15-performance .tr2-metric{background:#fff!important;border:1px solid #e5ece9!important;border-radius:12px!important;padding:14px!important}',
+ '#summary-app .r15-performance .tr2-metric b{font-size:21px!important}',
+ '#summary-app .r15-performance .tr2-head{font-size:13px!important}',
  '#summary-app .r15-performance{background:#fff;border:1px solid #dfe9e5;border-radius:20px;padding:24px;margin:0 0 20px}',
  '#summary-app .r15-section-heading{margin-bottom:18px}',
  '#summary-app .r15-section-heading small{font-size:11px;color:#2b8a69;font-weight:700;letter-spacing:.09em}',

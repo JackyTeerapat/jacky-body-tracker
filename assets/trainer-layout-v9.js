@@ -35,7 +35,13 @@ if(header){
   w.prepend(header);
   header.insertAdjacentElement('afterend',hero);
 }else w.prepend(hero);
-hero.insertAdjacentElement('afterend',trainer);trainer.insertAdjacentElement('afterend',goal);
+let overview=w.querySelector('.v14-coach-goal');
+if(!overview){overview=document.createElement('section');overview.className='v14-coach-goal';overview.setAttribute('aria-label','Trainer and goal progress');}
+hero.insertAdjacentElement('afterend',overview);
+overview.appendChild(trainer);
+overview.appendChild(goal);
+trainer.classList.add('v14-coach-panel');
+goal.classList.add('v14-goal-panel');
 w.querySelector('.s-this-week-preview')?.classList.add('v9-hide');
 w.querySelector('.s-metric-goal-grid')?.classList.add('v9-hide');
 const sm=d.sm||{},arm=Math.abs((+sm.ra||0)-(+sm.la||0)),leg=Math.abs((+sm.rl||0)-(+sm.ll||0));
@@ -110,6 +116,20 @@ const style=document.createElement('style');style.textContent=[
 '#summary-app .tr2-card.fat{background:#fffaf8!important;border-color:#efd9d3!important}',
 '#summary-app .tr2-card.muscle{background:#f9fcfd!important;border-color:#d6e9ee!important}',
 '@media(max-width:600px){#summary-app .s-header{padding:13px!important}#summary-app .s-header h1{font-size:20px!important}#summary-app .s-header .s-date{font-size:10px!important}#summary-app .s-header .s-score{padding:8px!important}#summary-app .s-header .s-score small{display:none!important}#summary-app .s-header .s-score strong{font-size:19px!important}#summary-app .v9-latest,#summary-app .at-trainer,#summary-app .s-goal-progress-section{padding:13px!important}}',
+'#summary-app .v14-coach-goal{display:grid;grid-template-columns:minmax(0,1.85fr) minmax(290px,1fr);align-items:start;gap:14px;margin-bottom:14px}',
+'#summary-app .v14-coach-goal>.v14-coach-panel,#summary-app .v14-coach-goal>.v14-goal-panel{margin:0!important;min-width:0;height:auto}',
+'#summary-app .v14-coach-goal .s-goal-section-head h2{font-size:18px!important;margin:5px 0!important;line-height:1.35!important}',
+'#summary-app .v14-coach-goal .s-goal-section-head p{font-size:11px!important;letter-spacing:.08em!important}',
+'#summary-app .v14-coach-goal .s-goal-section-head small{font-size:11px!important;line-height:1.55!important}',
+'#summary-app .v14-goal-panel .s-goal-remaining-grid{grid-template-columns:1fr!important;gap:9px!important}',
+'#summary-app .v14-goal-panel .s-goal-remaining-card{padding:13px!important}',
+'#summary-app .v14-goal-panel .s-goal-remaining-card strong{font-size:19px!important}',
+'#summary-app .v14-goal-panel .v9-advanced{background:#f8faf9!important;border:1px solid #dde9e3!important;margin:13px 0 0!important;padding:12px!important}',
+'#summary-app .v14-goal-panel .s-ffmi-section{border:0!important;padding:0!important;background:transparent!important;margin:0!important}',
+'#summary-app .v14-coach-panel .at-numbers{grid-template-columns:repeat(3,minmax(0,1fr))!important}',
+'#summary-app .v14-coach-panel .at-numbers>div{padding:10px!important}',
+'#summary-app .v14-coach-panel .at-numbers b{font-size:16px!important}',
+'@media(max-width:850px){#summary-app .v14-coach-goal{grid-template-columns:1fr}#summary-app .v14-coach-goal>.v14-coach-panel,#summary-app .v14-coach-goal>.v14-goal-panel{width:100%}}',
 '#summary-app .v9-latest{background:#fff;border:1px solid #dbe7e1;border-radius:18px;padding:16px;margin-bottom:13px}',
 '#summary-app .v9-label{font-size:10px;font-weight:850;color:#4e8a71;letter-spacing:.08em}',
 '#summary-app .v9-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:10px 0 15px}',

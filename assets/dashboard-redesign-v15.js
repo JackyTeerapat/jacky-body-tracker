@@ -41,6 +41,12 @@ function render(){
      if(!rules){rules=document.createElement('div');rules.className='r21-transition-rules';cutCards.insertAdjacentElement('afterend',rules);}
      const remaining=Number.isFinite(bf)?Math.max(0,bf-13).toFixed(1)+' จุดเปอร์เซ็นต์':'—';
      rules.innerHTML='<b>เงื่อนไขเข้าสู่ Maintenance</b><p>เป้า Body Fat 12–13% (จากค่าล่าสุดยังเหลือ '+remaining+' ถึง 13%) · รักษากล้ามและแรงยก · ฟื้นตัวได้ดี แล้วจึงประเมินการเปลี่ยน Phase โดยไม่ตัดสินจาก BIA ครั้งเดียว</p>';
+     // The legacy goal renderer can re-append cards after our summary.
+     // Reconcile DOM order on every pass: heading -> metrics -> transition -> FFMI.
+     const heading=q('.s-goal-section-head',goal);
+     if(heading)goal.prepend(heading);
+     if(heading)heading.insertAdjacentElement('afterend',cutCards);else goal.prepend(cutCards);
+     cutCards.insertAdjacentElement('afterend',rules);
    }
    const ff=q('.v9-advanced',goal);
    if(ff){const summary=q('summary',ff);if(summary)summary.textContent='FFMI · MUSCLE ROADMAP';}
@@ -121,6 +127,20 @@ function boot(){
  '#summary-app .r15-performance .tr2-grid{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important}',
  '#summary-app .r15-performance .tr2-card{display:block!important;width:100%!important;max-width:none!important;min-width:0!important}',
  '#summary-app .r15-performance canvas{max-width:100%!important}',
+ '#summary-app .v14-coach-goal .s-goal-progress-section{font-family:Kanit,system-ui,sans-serif!important;padding:24px!important;display:flex!important;flex-direction:column!important;gap:0!important}',
+ '#summary-app .v14-coach-goal .s-goal-section-head{margin:0 0 18px!important;padding:0!important}',
+ '#summary-app .v14-coach-goal .s-goal-section-head p{font-size:12px!important;line-height:1.6!important;letter-spacing:.075em!important;margin:0 0 5px!important;color:#227e67!important}',
+ '#summary-app .v14-coach-goal .s-goal-section-head h2{font-size:23px!important;line-height:1.35!important;margin:0 0 6px!important;font-weight:700!important}',
+ '#summary-app .v14-coach-goal .s-goal-section-head small{font-size:13px!important;line-height:1.6!important;color:#70867c!important}',
+ '#summary-app .v14-coach-goal .r21-cut-metrics{margin:0!important;gap:12px!important}',
+ '#summary-app .v14-coach-goal .r21-cut-metrics>.s-goal-remaining-card,#summary-app .v14-coach-goal .r21-cut-metrics>.r21-muscle{padding:17px!important;border-radius:14px!important}',
+ '#summary-app .v14-coach-goal .r21-cut-metrics small{font-size:12px!important;line-height:1.6!important}',
+ '#summary-app .v14-coach-goal .r21-cut-metrics strong{font-size:22px!important;line-height:1.3!important}',
+ '#summary-app .v14-coach-goal .r21-transition-rules{order:0!important;margin:16px 0 0!important;padding:18px 20px!important;background:#eff7f3!important;border-radius:14px!important}',
+ '#summary-app .v14-coach-goal .r21-transition-rules b{display:block;font-size:16px!important;line-height:1.5!important}',
+ '#summary-app .v14-coach-goal .r21-transition-rules p{font-size:13px!important;line-height:1.75!important;margin:7px 0 0!important}',
+ '#summary-app .v14-coach-goal .v9-advanced{margin-top:15px!important}',
+ '@media(max-width:700px){#summary-app .v14-coach-goal .s-goal-progress-section{padding:15px!important}#summary-app .v14-coach-goal .s-goal-section-head h2{font-size:20px!important}#summary-app .v14-coach-goal .r21-transition-rules{padding:14px!important}#summary-app .v14-coach-goal .r21-transition-rules p{font-size:12px!important}}',
  '#summary-app .r21-cut-metrics{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:12px!important}',
  '#summary-app .r21-muscle{border:1px solid #d9e9e5;border-radius:12px;background:#fff;padding:15px;min-width:0}',
  '#summary-app .r21-muscle>small{font-size:11px;font-weight:700;color:#5f7770}',

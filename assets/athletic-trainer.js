@@ -68,6 +68,9 @@
   if(!wrap||!point||!Array.isArray(data))return;
   const result=getWeeks(data),content=html(result.weeks,result.current);if(!content)return;
   let card=wrap.querySelector('.at-trainer');if(!card){card=document.createElement('section');card.className='at-trainer';}
+  // Never steal the mounted Trainer out of its phase overview on a delayed rerender.
+  // Layout scripts own the position once the card has been mounted.
+  if(card.closest('.v14-coach-goal')) return;
   card.innerHTML=content;point.insertAdjacentElement('beforebegin',card);
  }
  function boot(){

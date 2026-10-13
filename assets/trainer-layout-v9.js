@@ -16,6 +16,10 @@ hero.innerHTML='<div class="v9-label">JACKY BODY TRACKER · ผลชั่ง�
 const original=w.querySelector('#s-detail-content > .s-detail-card:not(.s-segment-card)') || document.querySelector('#s-detail-content .s-detail-card:not(.s-segment-card)');
 const originalTarget=hero.querySelector('.v9-original-scan');
 if(original&&originalTarget&&original.parentElement!==originalTarget)originalTarget.appendChild(original);
+const detailsHeading=document.getElementById('s-details-heading');
+if(detailsHeading)detailsHeading.textContent='รายละเอียดร่างกายรายส่วน';
+const detailsKicker=document.querySelector('#summary-app .s-details .s-section-kicker');
+if(detailsKicker)detailsKicker.textContent='SEGMENTAL ANALYSIS';
 const trainer=w.querySelector('.at-trainer'),goal=w.querySelector('.s-goal-progress-section'),ffmi=w.querySelector('.s-ffmi-section');
 if(!trainer||!goal)return;
 w.prepend(hero);hero.insertAdjacentElement('afterend',trainer);trainer.insertAdjacentElement('afterend',goal);

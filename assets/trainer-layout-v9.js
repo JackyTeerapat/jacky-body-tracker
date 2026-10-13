@@ -13,13 +13,17 @@ hero.innerHTML='<div class="v9-label">JACKY BODY TRACKER · ผลชั่ง�
 '<div class="v9-grid">'+[['ไขมัน',d.fat,p?.fat,'kg','fat'],['กล้ามเนื้อ',d.muscle,p?.muscle,'kg','muscle'],['น้ำในร่างกาย',d.waterWeight,p?.waterWeight,'kg','water']].map(a=>'<div><small>'+a[0]+'</small><b>'+f(a[1])+' '+a[3]+'</b><em class="v9-delta '+(a[4]==='fat'&&Number(a[1])<Number(a[2])?'positive':a[4]==='muscle'&&Number(a[1])<Number(a[2])?'negative':'')+'">'+dif(a[1],a[2])+' kg จากครั้งก่อน</em></div>').join('')+'</div>'+
 '<details class="v9-scan"><summary>ดูรายละเอียดผลสแกนล่าสุด</summary><div class="v9-original-scan"></div></details>';hero.dataset.ready='1';
 }
-const original=w.querySelector('#s-detail-content > .s-detail-card:not(.s-segment-card)') || document.querySelector('#s-detail-content .s-detail-card:not(.s-segment-card)');
+// Move the original live detail container (including scan rows and Body Map),
+// not individual cards: the legacy renderer replaces its contents on updates.
+const detailContainer=document.getElementById('s-detail-content');
 const originalTarget=hero.querySelector('.v9-original-scan');
-if(original&&originalTarget&&original.parentElement!==originalTarget)originalTarget.appendChild(original);
-const detailsHeading=document.getElementById('s-details-heading');
-if(detailsHeading)detailsHeading.textContent='รายละเอียดร่างกายรายส่วน';
-const detailsKicker=document.querySelector('#summary-app .s-details .s-section-kicker');
-if(detailsKicker)detailsKicker.textContent='SEGMENTAL ANALYSIS';
+if(detailContainer&&originalTarget&&detailContainer.parentElement!==originalTarget){
+  originalTarget.appendChild(detailContainer);
+}
+const oldSection=w.querySelector('.s-details');
+if(oldSection&&detailContainer?.parentElement===originalTarget)oldSection.classList.add('v9-hide');
+// Hide the old detail wrapper only; scan data and segment map remain live
+// under the daily scan disclosure.
 const trainer=w.querySelector('.at-trainer'),goal=w.querySelector('.s-goal-progress-section'),ffmi=w.querySelector('.s-ffmi-section');
 if(!trainer||!goal)return;
 w.prepend(hero);hero.insertAdjacentElement('afterend',trainer);trainer.insertAdjacentElement('afterend',goal);

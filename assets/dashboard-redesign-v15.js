@@ -16,18 +16,8 @@ function render(){
    else trainer.appendChild(goal);
  }
  if(trainer){
-   let phaseInfo=q('.r17-phase-info',trainer);
-   if(!phaseInfo){phaseInfo=document.createElement('section');phaseInfo.className='r17-phase-info';}
-   const phase=trainer.querySelector('.at-phases');
-   const src=window.__JACKY_TRACKER__;
-   const data=src?.DATA?.slice()?.filter(x=>x?.isoDate)?.sort((a,b)=>a.isoDate.localeCompare(b.isoDate))||[];
-   const last=data.at(-1), bf=Number(last?.bf), fat=Number(last?.fat), targetFat=Number(src?.TARGET);
-   const bfLeft=Number.isFinite(bf)?Math.max(0,bf-13):null;
-   const fatLeft=Number.isFinite(fat)&&Number.isFinite(targetFat)?Math.max(0,fat-targetFat):null;
-   phaseInfo.innerHTML='<div class="r17-phase-header"><strong>เมื่อไหร่ถึงเปลี่ยน Phase?</strong><span>เป้าหมาย Cut → Maintenance</span></div>'+
-     '<div class="r17-phase-numbers"><div><small>Body Fat เป้าหมาย</small><b>12–13%</b><small>ยังเหลือ '+(bfLeft===null?'—':bfLeft.toFixed(1)+' จุดเปอร์เซ็นต์')+' ถึง 13%</small></div><div><small>Fat Mass เป้าหมาย</small><b>'+ (Number.isFinite(targetFat)?targetFat.toFixed(1)+' kg':'—')+'</b><small>เหลือลดประมาณ '+(fatLeft===null?'—':fatLeft.toFixed(1)+' kg')+'</small></div></div>'+
-     '<p>จบ Cut เมื่อแนวโน้มไขมันเข้าใกล้ 12–13% อย่างต่อเนื่อง พร้อมตรวจแรงยกและการฟื้นตัว ก่อนเข้าสู่ Maintenance แล้วจึง Lean Bulk · การเปลี่ยน Phase ต้องยืนยัน ไม่อิง BIA ครั้งเดียว</p>';
-   if(phase&&phaseInfo.previousElementSibling!==phase)phase.insertAdjacentElement('afterend',phaseInfo);
+   // Remove the redundant standalone phase-change panel; its explanation lives with Cut goals.
+   trainer.querySelector('.r17-phase-info')?.remove();
    const stats=q('.at-numbers',trainer);if(stats)stats.classList.add('r15-secondary-stats');
    const notes=q('.at-reason',trainer);if(notes)notes.classList.add('r15-coach-reason');
    const insight=q('.v9-insight',trainer);if(insight)insight.classList.add('r15-coach-insight');
@@ -38,6 +28,20 @@ function render(){
    const phases=trainer?.querySelector('.at-phases');if(phases&&goal.previousElementSibling!==phases)phases.insertAdjacentElement('afterend',goal);
    const h=q('.s-goal-section-head h2',goal);if(h)h.textContent='เป้าหมายลดไขมัน';
    const t=q('.s-goal-section-head small',goal);if(t)t.textContent='ติดตามด้วยค่าเฉลี่ยรายสัปดาห์';
+   const cutCards=q('.s-goal-remaining-grid',goal);
+   if(cutCards){
+     cutCards.classList.add('r21-cut-metrics');
+     let muscle=cutCards.querySelector('.r21-muscle');
+     if(!muscle){muscle=document.createElement('article');muscle.className='r21-muscle';cutCards.appendChild(muscle);}
+     const src=window.__JACKY_TRACKER__;
+     const data=(src?.DATA||[]).filter(x=>x?.isoDate).slice().sort((a,b)=>a.isoDate.localeCompare(b.isoDate));
+     const latest=data.at(-1),muscleValue=Number(latest?.muscle),bf=Number(latest?.bf);
+     muscle.innerHTML='<small>Muscle Mass · BIA</small><div class="r21-muscle-value">'+(Number.isFinite(muscleValue)?muscleValue.toFixed(1)+' kg':'—')+'<span>รักษากล้ามระหว่าง Cut</span></div><p>เป้าหมายคือรักษามวลกล้ามและแรงยก ไม่ต้องเพิ่มถึง '+(Number.isFinite(Number(src?.MUSCLE_TARGET))?Number(src.MUSCLE_TARGET).toFixed(0):'63')+' kg ก่อนจบ Cut</p>';
+     let rules=goal.querySelector('.r21-transition-rules');
+     if(!rules){rules=document.createElement('div');rules.className='r21-transition-rules';cutCards.insertAdjacentElement('afterend',rules);}
+     const remaining=Number.isFinite(bf)?Math.max(0,bf-13).toFixed(1)+' จุดเปอร์เซ็นต์':'—';
+     rules.innerHTML='<b>เงื่อนไขเข้าสู่ Maintenance</b><p>เป้า Body Fat 12–13% (จากค่าล่าสุดยังเหลือ '+remaining+' ถึง 13%) · รักษากล้ามและแรงยก · ฟื้นตัวได้ดี แล้วจึงประเมินการเปลี่ยน Phase โดยไม่ตัดสินจาก BIA ครั้งเดียว</p>';
+   }
    const ff=q('.v9-advanced',goal);
    if(ff){const summary=q('summary',ff);if(summary)summary.textContent='FFMI · MUSCLE ROADMAP';}
  }
@@ -117,6 +121,15 @@ function boot(){
  '#summary-app .r15-performance .tr2-grid{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important}',
  '#summary-app .r15-performance .tr2-card{display:block!important;width:100%!important;max-width:none!important;min-width:0!important}',
  '#summary-app .r15-performance canvas{max-width:100%!important}',
+ '#summary-app .r21-cut-metrics{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:12px!important}',
+ '#summary-app .r21-muscle{border:1px solid #d9e9e5;border-radius:12px;background:#fff;padding:15px;min-width:0}',
+ '#summary-app .r21-muscle>small{font-size:11px;font-weight:700;color:#5f7770}',
+ '#summary-app .r21-muscle-value{margin:7px 0;font-size:23px;font-weight:800;color:#246b68}',
+ '#summary-app .r21-muscle-value span{display:block;margin-top:5px;font-size:11px;font-weight:600;color:#267966}',
+ '#summary-app .r21-muscle p,#summary-app .r21-transition-rules p{font-size:12px;line-height:1.7;color:#658077;margin:5px 0 0}',
+ '#summary-app .r21-transition-rules{margin-top:14px;padding:14px 16px;background:#f2f8f4;border:1px solid #dceae1;border-radius:12px}',
+ '#summary-app .r21-transition-rules b{font-size:13px;color:#265d47}',
+ '@media(max-width:760px){#summary-app .r21-cut-metrics{grid-template-columns:1fr!important}}',
  '#summary-app .r17-phase-info{padding:17px;margin:15px 0;border:1px solid #dce9e2;border-radius:14px;background:#f5faf7}',
  '#summary-app .r17-phase-header{display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap}',
  '#summary-app .r17-phase-header strong{font-size:15px}',

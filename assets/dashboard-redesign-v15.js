@@ -93,7 +93,7 @@ function boot(){
  '#summary-app .v14-coach-goal .at-trainer>.s-goal-progress-section .s-goal-remaining-card{background:#fff!important;min-width:0!important}',
  '#summary-app .v14-coach-goal .at-trainer>.s-goal-progress-section .v9-advanced{background:#fff!important}',
  '@media(max-width:650px){#summary-app .v14-coach-goal .at-trainer>.s-goal-progress-section .s-goal-remaining-grid{grid-template-columns:1fr!important}}',
- '#summary-app .v14-coach-goal{display:grid!important;grid-template-columns:minmax(0,1.7fr) minmax(300px,1fr)!important;align-items:start!important;gap:16px!important;margin-bottom:20px!important}',
+ '#summary-app .v14-coach-goal{display:block!important;grid-template-columns:none!important;width:100%!important;min-width:0!important;margin-bottom:20px!important}',
  '#summary-app .v14-coach-goal>.at-trainer,#summary-app .v14-coach-goal>.s-goal-progress-section{border:1px solid #dfe9e5!important;background:#fff!important;border-radius:20px!important;padding:22px!important;box-shadow:none!important}',
  '#summary-app .at-head h2{font-size:24px!important}',
  '#summary-app .at-eyebrow,#summary-app .s-goal-section-head p{font-size:12px!important;letter-spacing:.06em!important}',

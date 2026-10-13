@@ -39,7 +39,9 @@ let overview=w.querySelector('.v14-coach-goal');
 if(!overview){overview=document.createElement('section');overview.className='v14-coach-goal';overview.setAttribute('aria-label','Trainer and goal progress');}
 hero.insertAdjacentElement('afterend',overview);
 overview.appendChild(trainer);
-trainer.appendChild(goal);
+const phases=trainer.querySelector('.at-phases');
+if(phases)phases.insertAdjacentElement('afterend',goal);
+else trainer.appendChild(goal);
 trainer.classList.add('v14-coach-panel');
 goal.classList.add('v14-goal-panel');
 w.querySelector('.s-this-week-preview')?.classList.add('v9-hide');

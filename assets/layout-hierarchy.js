@@ -249,7 +249,7 @@
       section=document.createElement('section');
       section.className='s-goal-progress-section';
     }
-    checkpoint.insertAdjacentElement('afterend',section);
+    if (!section.closest('.at-trainer')) checkpoint.insertAdjacentElement('afterend',section);
 
     let head=section.querySelector('.s-goal-section-head');
     if(!head){

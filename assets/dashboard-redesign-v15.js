@@ -7,7 +7,14 @@ function render(){
  w.classList.add('r15-layout');
  w.prepend(head);head.insertAdjacentElement('afterend',scan);scan.insertAdjacentElement('afterend',pair);
  // Single trainer recommendation; weekly numbers live in Weekly Performance.
- const trainer=q('.at-trainer',pair),goal=q('.s-goal-progress-section',pair);
+ // Recover the Trainer if legacy scripts moved it ahead of Weekly Performance.
+ const trainer=q('.at-trainer',w),goal=q('.s-goal-progress-section',w);
+ if(trainer&&trainer.parentElement!==pair){pair.prepend(trainer);}
+ if(goal&&trainer&&!trainer.contains(goal)){
+   const phases=q('.at-phases',trainer);
+   if(phases)phases.insertAdjacentElement('afterend',goal);
+   else trainer.appendChild(goal);
+ }
  if(trainer){
    let phaseInfo=q('.r17-phase-info',trainer);
    if(!phaseInfo){phaseInfo=document.createElement('section');phaseInfo.className='r17-phase-info';}

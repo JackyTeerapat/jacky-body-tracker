@@ -49,7 +49,7 @@ function render(){
      cutCards.insertAdjacentElement('afterend',rules);
    }
    const ff=q('.v9-advanced',goal);
-   if(ff){const summary=q('summary',ff);if(summary)summary.textContent='FFMI · MUSCLE ROADMAP';}
+   if(ff){const summary=q('summary',ff);if(summary)summary.textContent='FFMI · MUSCLE ROADMAP';const rules=q('.r21-transition-rules',goal);if(rules)rules.insertAdjacentElement('afterend',ff);}
  }
  // A single trends and weekly-performance zone, followed by deep history.
  let performance=q('.r15-performance',w);

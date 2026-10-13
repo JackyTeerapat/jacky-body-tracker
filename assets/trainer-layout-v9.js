@@ -26,8 +26,18 @@ if(oldSection&&detailContainer?.parentElement===originalTarget)oldSection.classL
 // under the daily scan disclosure.
 const trainer=w.querySelector('.at-trainer'),goal=w.querySelector('.s-goal-progress-section'),ffmi=w.querySelector('.s-ffmi-section');
 if(!trainer||!goal)return;
-w.prepend(hero);hero.insertAdjacentElement('afterend',trainer);trainer.insertAdjacentElement('afterend',goal);
+const header=w.querySelector('.s-header');
+if(header){
+  header.querySelector('.s-eyebrow')?.replaceChildren(document.createTextNode('JACKY'));
+  const heading=header.querySelector('h1');if(heading)heading.textContent='BODY TRACKER';
+  const scanDate=header.querySelector('.s-date');
+  if(scanDate){const v=String(d.measuredAt||d.isoDate),stamp=v.replace('T',' · ').slice(0,18);scanDate.textContent='อัปเดตล่าสุด · '+stamp;}
+  w.prepend(header);
+  header.insertAdjacentElement('afterend',hero);
+}else w.prepend(hero);
+hero.insertAdjacentElement('afterend',trainer);trainer.insertAdjacentElement('afterend',goal);
 w.querySelector('.s-this-week-preview')?.classList.add('v9-hide');
+w.querySelector('.s-metric-goal-grid')?.classList.add('v9-hide');
 const sm=d.sm||{},arm=Math.abs((+sm.ra||0)-(+sm.la||0)),leg=Math.abs((+sm.rl||0)-(+sm.ll||0));
 let insight=trainer.querySelector('.v9-insight');if(!insight){insight=document.createElement('section');insight.className='v9-insight';(trainer.querySelector('.at-action')||trainer).insertAdjacentElement('afterend',insight);}
 insight.innerHTML='<b>วิเคราะห์กล้ามเนื้อรายส่วน</b><p>'+(arm<.2&&leg<.3?'แขนและขาทั้งสองข้างค่อนข้างสมดุลตามค่า BIA':'พบค่ากล้ามสองข้างต่างกัน ควรตรวจแนวโน้มและแรงยกก่อนปรับการฝึก')+' · แขนต่าง '+f(arm)+' kg · ขาต่าง '+f(leg)+' kg</p><small>ไม่สั่งเพิ่มเซตจากผล BIA ครั้งเดียว และไม่ใช้ไขมันเฉพาะจุดสั่งท่าออกกำลังกาย</small>';
@@ -76,6 +86,30 @@ const style=document.createElement('style');style.textContent=[
 '#summary-app .v9-original-scan .s-detail-card{margin:0!important;box-shadow:none!important;border:0!important;padding:0!important}',
 '#summary-app .v9-scan summary{font-size:14px!important;padding:7px 0!important}',
 '@media(max-width:600px){#summary-app .at-trainer{padding:15px!important}#summary-app .at-head h2{font-size:21px!important}#summary-app .at-action strong{font-size:17px!important}#summary-app .at-numbers{grid-template-columns:repeat(3,minmax(0,1fr))!important}#summary-app .at-numbers b{font-size:15px!important}#summary-app .v9-plan-grid strong{font-size:15px!important}#summary-app .v9-grid b{font-size:15px!important}}',
+'#summary-app{--ui-accent:#247c64;--ui-text:#213630;--ui-subtle:#657b72;--ui-border:#dce8e2;--ui-soft:#f5f9f7;color:var(--ui-text)}',
+'#summary-app .summary-wrap{max-width:1080px;margin:0 auto}',
+'#summary-app .s-header{display:flex!important;align-items:center;justify-content:space-between;gap:16px;margin:0 0 14px!important;padding:16px 20px!important;border:1px solid var(--ui-border)!important;background:#fff!important;border-radius:18px!important;box-shadow:none!important}',
+'#summary-app .s-header .s-eyebrow{color:var(--ui-accent)!important;font-size:11px!important;font-weight:800!important;letter-spacing:.09em!important;margin:0 0 4px!important}',
+'#summary-app .s-header h1{font-size:26px!important;font-weight:900!important;line-height:1.2!important;margin:0!important;color:var(--ui-text)!important}',
+'#summary-app .s-header .s-date{font-size:12px!important;line-height:1.5!important;color:var(--ui-subtle)!important;margin:6px 0 0!important}',
+'#summary-app .s-header .s-score{flex:none;display:flex!important;align-items:baseline!important;gap:4px!important;border:0!important;background:var(--ui-soft)!important;border-radius:12px!important;padding:10px 13px!important;box-shadow:none!important}',
+'#summary-app .s-header .s-score small{font-size:11px!important;color:var(--ui-subtle)!important;margin-right:6px!important}',
+'#summary-app .s-header .s-score strong{font-size:22px!important;font-weight:900!important;color:var(--ui-text)!important}',
+'#summary-app .s-header .s-score span{font-size:11px!important;color:var(--ui-subtle)!important}',
+'#summary-app .v9-latest,#summary-app .at-trainer,#summary-app .s-goal-progress-section,#summary-app .tr2-card,#summary-app .tr2-summary,#summary-app .v9-advanced{border:1px solid var(--ui-border)!important;background:#fff!important;border-radius:18px!important;box-shadow:none!important}',
+'#summary-app .v9-latest,#summary-app .at-trainer,#summary-app .s-goal-progress-section{padding:20px!important;margin-bottom:14px!important}',
+'#summary-app .v9-label,#summary-app .at-eyebrow{color:var(--ui-accent)!important;font-size:11px!important;font-weight:850!important}',
+'#summary-app .v9-head strong{color:var(--ui-text)}',
+'#summary-app .v9-grid>div,#summary-app .at-numbers>div{background:var(--ui-soft)!important;border-color:var(--ui-border)!important;border-radius:12px!important}',
+'#summary-app .at-head h2{font-size:22px!important;color:var(--ui-text)!important}',
+'#summary-app .at-action{background:#edf7f1!important;border:1px solid #d4e9dc!important}',
+'#summary-app .at-action strong{font-size:17px!important;line-height:1.5!important}',
+'#summary-app .v9-plan{background:#fff!important}',
+'#summary-app .v9-insight{background:var(--ui-soft)!important}',
+'#summary-app .v9-plan-grid strong{color:var(--ui-text)}',
+'#summary-app .tr2-card.fat{background:#fffaf8!important;border-color:#efd9d3!important}',
+'#summary-app .tr2-card.muscle{background:#f9fcfd!important;border-color:#d6e9ee!important}',
+'@media(max-width:600px){#summary-app .s-header{padding:13px!important}#summary-app .s-header h1{font-size:20px!important}#summary-app .s-header .s-date{font-size:10px!important}#summary-app .s-header .s-score{padding:8px!important}#summary-app .s-header .s-score small{display:none!important}#summary-app .s-header .s-score strong{font-size:19px!important}#summary-app .v9-latest,#summary-app .at-trainer,#summary-app .s-goal-progress-section{padding:13px!important}}',
 '#summary-app .v9-latest{background:#fff;border:1px solid #dbe7e1;border-radius:18px;padding:16px;margin-bottom:13px}',
 '#summary-app .v9-label{font-size:10px;font-weight:850;color:#4e8a71;letter-spacing:.08em}',
 '#summary-app .v9-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:10px 0 15px}',

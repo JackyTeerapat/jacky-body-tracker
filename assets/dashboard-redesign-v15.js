@@ -16,6 +16,7 @@ function render(){
    const label=q('.at-eyebrow',trainer);if(label)label.textContent='PERSONAL TRAINER';
  }
  if(goal){
+   const phases=trainer?.querySelector('.at-phases');if(phases&&goal.previousElementSibling!==phases)phases.insertAdjacentElement('afterend',goal);
    const h=q('.s-goal-section-head h2',goal);if(h)h.textContent='เป้าหมายลดไขมัน';
    const t=q('.s-goal-section-head small',goal);if(t)t.textContent='ติดตามด้วยค่าเฉลี่ยรายสัปดาห์';
    const ff=q('.v9-advanced',goal);
@@ -57,6 +58,14 @@ function boot(){
  '#summary-app .v9-grid b{font-size:19px!important}',
  '#summary-app .v9-scan{margin-top:18px!important}',
  '#summary-app .v9-scan summary{font-size:14px!important}',
+ '#summary-app .v14-coach-goal{display:block!important;margin-bottom:20px!important}',
+ '#summary-app .v14-coach-goal>.at-trainer{width:100%!important;max-width:none!important;margin:0!important}',
+ '#summary-app .v14-coach-goal .at-trainer>.s-goal-progress-section{margin:14px 0!important;padding:18px!important;background:#f7faf8!important;border:1px solid #dce9e2!important;border-radius:16px!important;box-shadow:none!important}',
+ '#summary-app .v14-coach-goal .at-trainer>.s-goal-progress-section .s-goal-section-head h2{font-size:20px!important}',
+ '#summary-app .v14-coach-goal .at-trainer>.s-goal-progress-section .s-goal-remaining-grid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px!important}',
+ '#summary-app .v14-coach-goal .at-trainer>.s-goal-progress-section .s-goal-remaining-card{background:#fff!important;min-width:0!important}',
+ '#summary-app .v14-coach-goal .at-trainer>.s-goal-progress-section .v9-advanced{background:#fff!important}',
+ '@media(max-width:650px){#summary-app .v14-coach-goal .at-trainer>.s-goal-progress-section .s-goal-remaining-grid{grid-template-columns:1fr!important}}',
  '#summary-app .v14-coach-goal{display:grid!important;grid-template-columns:minmax(0,1.7fr) minmax(300px,1fr)!important;align-items:start!important;gap:16px!important;margin-bottom:20px!important}',
  '#summary-app .v14-coach-goal>.at-trainer,#summary-app .v14-coach-goal>.s-goal-progress-section{border:1px solid #dfe9e5!important;background:#fff!important;border-radius:20px!important;padding:22px!important;box-shadow:none!important}',
  '#summary-app .at-head h2{font-size:24px!important}',

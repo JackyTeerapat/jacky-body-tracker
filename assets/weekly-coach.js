@@ -151,6 +151,9 @@
     const positive=Number.isFinite(weightRate)&&weightRate<=-TARGET_LOSS_MIN&&weightRate>=-TARGET_LOSS_MAX;
     const tooFast=Number.isFinite(weightRate)&&weightRate < -TARGET_LOSS_MAX;
     const lostMuscle=Number.isFinite(muscleRate)&&muscleRate < -0.20;
+    // An adverse same-calibration fat trend vetoes GREEN even if weight is
+    // declining at the target rate. BIA trend alone is not proof of fat gain.
+    const fatRising=Number.isFinite(fatRate)&&fatRate>0.15;
     let level='yellow',icon='🟡',title='Trend review',summary='',calories='',training='';
     if(recovering){
       title='Recovery first';
@@ -162,6 +165,11 @@
       summary='แนวโน้มน้ำหนักลงเร็วหรือ BIA กล้ามลด: ป้องกันเสียกล้ามก่อน';
       calories='ตรวจอาหารและโปรตีนที่กินจริง อย่าลดแคลอรีเพิ่ม';
       training='รักษาแรงยก ลดเซตที่เกินความสามารถฟื้นตัว';
+    }else if(fatRising){
+      title='Weight Down · Fat Trend Up';
+      summary='น้ำหนักย้อนหลังอาจลดตามเป้า แต่แนวโน้มไขมัน BIA ภายใน calibration เดียวกันเพิ่มขึ้น จึงยังไม่จัดเป็น GREEN';
+      calories='เริ่มบันทึกอาหารที่กินจริง 7 วันตั้งแต่วันนี้ ตรวจน้ำหนัก/ไขมันเฉลี่ยและรอบเอว ไม่ลดแคลอรีแรงเพราะตัวเลข BIA ช่วงสั้น';
+      training='คงเวทเพื่อรักษาแรงยก และตรวจการฟื้นตัวก่อนเพิ่ม Cardio';
     }else if(positive){
       level='green';icon='🟢';title='On Track';
       summary='อัตราลดน้ำหนักย้อนหลังอยู่ในเป้าหมาย: ทำแผนเดิมต่อได้เลย';
@@ -298,7 +306,7 @@
           <span class="s-coach-pill ${wm.cls}">${signed(state.weightRate)} /wk · ${wm.label}</span>
         </div>
         <div class="s-coach-metric">
-          <small>Fat avg</small>
+          <small>Fat avg (closed week)</small>
           <strong>${f2(anchor.data.fat)} kg</strong>
           <span class="s-coach-pill ${fm.cls}">${signed(state.fatRate)} /wk · ${fm.label}</span>
         </div>
@@ -329,7 +337,7 @@
           <h3>เหตุผลของสถานะนี้</h3>
           <ul>
             <li>Weight trend ${signed(state.weightRate)} /week จาก ${state.usedWeeks} สัปดาห์ปิด · แนวโน้มสั้น ${signed(state.recentRate)} /week</li>
-            <li>Fat trend ${signed(state.fatRate)} /week · ${state.eraNote}</li>
+            <li>Fat trend ${signed(state.fatRate)} /week · ${state.eraNote} · อัตราแนวโน้ม ไม่ใช่ส่วนต่างค่าเฉลี่ยสัปดาห์ต่อสัปดาห์</li>
             <li>Muscle trend ${signed(state.muscleRate)} /week · BIA ขึ้นกับน้ำและแรงยก</li>
             <li>Water trend ${signed(state.waterRate)} /week</li>
             <li><b>In-week fat movement:</b> ${peakNote}</li>
@@ -339,8 +347,8 @@
       </div>
 
       <div class="s-coach-rule">
-        <div><b>🟢 GREEN</b>Weight −0.30 ถึง −0.50 kg/wk + Muscle ≥ 0 + recovery ปกติ · ถ้า Muscle > 0 ถือว่าได้ตามเป้าหมายเต็ม</div>
-        <div><b>🟡 YELLOW</b>Muscle ติดลบ / recovery แย่ / น้ำหนักออกนอกช่วง → ห้ามเพิ่ม deficit</div>
+        <div><b>🟢 GREEN</b>Weight −0.30 ถึง −0.50 kg/wk + Fat trend ไม่เพิ่ม + Muscle ไม่ลดเกินเกณฑ์ + recovery ปกติ · ถ้า Muscle > 0 ถือว่าได้ตามเป้าหมายเต็ม</div>
+        <div><b>🟡 YELLOW</b>Fat trend เพิ่ม / Muscle ติดลบ / recovery แย่ / น้ำหนักออกนอกช่วง → ห้ามเพิ่ม deficit</div>
         <div><b>🔴 RED</b>เข้าเกณฑ์ยืนยัน muscle loss ที่ล็อกไว้ → เพิ่มอาหาร/ลด fatigue และทบทวน cut</div>
       </div>
 

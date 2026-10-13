@@ -9,6 +9,18 @@ function render(){
  // Single trainer recommendation; weekly numbers live in Weekly Performance.
  const trainer=q('.at-trainer',pair),goal=q('.s-goal-progress-section',pair);
  if(trainer){
+   let phaseInfo=q('.r17-phase-info',trainer);
+   if(!phaseInfo){phaseInfo=document.createElement('section');phaseInfo.className='r17-phase-info';}
+   const phase=trainer.querySelector('.at-phases');
+   const src=window.__JACKY_TRACKER__;
+   const data=src?.DATA?.slice()?.filter(x=>x?.isoDate)?.sort((a,b)=>a.isoDate.localeCompare(b.isoDate))||[];
+   const last=data.at(-1), bf=Number(last?.bf), fat=Number(last?.fat), targetFat=Number(src?.TARGET);
+   const bfLeft=Number.isFinite(bf)?Math.max(0,bf-13):null;
+   const fatLeft=Number.isFinite(fat)&&Number.isFinite(targetFat)?Math.max(0,fat-targetFat):null;
+   phaseInfo.innerHTML='<div class="r17-phase-header"><strong>เมื่อไหร่ถึงเปลี่ยน Phase?</strong><span>เป้าหมาย Cut → Maintenance</span></div>'+
+     '<div class="r17-phase-numbers"><div><small>Body Fat เป้าหมาย</small><b>12–13%</b><small>ยังเหลือ '+(bfLeft===null?'—':bfLeft.toFixed(1)+' จุดเปอร์เซ็นต์')+' ถึง 13%</small></div><div><small>Fat Mass เป้าหมาย</small><b>'+ (Number.isFinite(targetFat)?targetFat.toFixed(1)+' kg':'—')+'</b><small>เหลือลดประมาณ '+(fatLeft===null?'—':fatLeft.toFixed(1)+' kg')+'</small></div></div>'+
+     '<p>จบ Cut เมื่อแนวโน้มไขมันเข้าใกล้ 12–13% อย่างต่อเนื่อง พร้อมตรวจแรงยกและการฟื้นตัว ก่อนเข้าสู่ Maintenance แล้วจึง Lean Bulk · การเปลี่ยน Phase ต้องยืนยัน ไม่อิง BIA ครั้งเดียว</p>';
+   if(phase&&phaseInfo.previousElementSibling!==phase)phase.insertAdjacentElement('afterend',phaseInfo);
    const stats=q('.at-numbers',trainer);if(stats)stats.classList.add('r15-secondary-stats');
    const notes=q('.at-reason',trainer);if(notes)notes.classList.add('r15-coach-reason');
    const insight=q('.v9-insight',trainer);if(insight)insight.classList.add('r15-coach-insight');
@@ -34,6 +46,12 @@ function render(){
  const controls=q('.s-range-controls',w);
  const trendContainer=controls?.closest('.s-trend-card');
  if(trendContainer&&trendContainer.parentElement!==area)area.appendChild(trendContainer);
+ // Keep time controls and charts in the SAME responsive flow, no side columns.
+ if(trendContainer){trendContainer.classList.add('r17-trend-full');}
+ const selector=trendContainer?.querySelector('.s-period-selector');
+ if(selector)selector.classList.add('r17-period-bar');
+ const graph=trendContainer?.querySelector('.tr2-root');
+ if(graph)graph.classList.add('r17-chart-root');
  const legacyCoach=trainer?.querySelector('.at-review');if(legacyCoach)legacyCoach.remove();
  const previews=w.querySelectorAll('.s-this-week-preview,.s-metric-goal-grid,.s-verdict');previews.forEach(el=>el.classList.add('r15-hide'));
  if(history){history.classList.add('r15-history');}
@@ -85,6 +103,23 @@ function boot(){
  '#summary-app .v14-goal-panel .s-goal-remaining-grid{grid-template-columns:1fr!important}',
  '#summary-app .v14-goal-panel .s-goal-remaining-card{padding:15px!important}',
  '#summary-app .v14-goal-panel .v9-advanced{border-radius:13px!important;margin-top:14px!important}',
+ '#summary-app .r15-performance .r15-performance-content,#summary-app .r15-performance .r17-trend-full,#summary-app .r15-performance .r17-chart-root{display:block!important;width:100%!important;max-width:none!important;min-width:0!important;float:none!important;position:static!important;margin-left:0!important;margin-right:0!important}',
+ '#summary-app .r15-performance .r17-trend-full{grid-column:1/-1!important;flex:1 1 100%!important;overflow:visible!important}',
+ '#summary-app .r15-performance .r17-period-bar{display:flex!important;width:100%!important;justify-content:flex-start!important;align-items:center!important;flex-wrap:wrap!important;margin:0 0 16px!important;padding:0!important}',
+ '#summary-app .r15-performance .r17-period-bar .s-range-controls{display:flex!important;flex-wrap:wrap!important;width:auto!important;gap:8px!important;position:static!important}',
+ '#summary-app .r15-performance .tr2-grid{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important}',
+ '#summary-app .r15-performance .tr2-card{display:block!important;width:100%!important;max-width:none!important;min-width:0!important}',
+ '#summary-app .r15-performance canvas{max-width:100%!important}',
+ '#summary-app .r17-phase-info{padding:17px;margin:15px 0;border:1px solid #dce9e2;border-radius:14px;background:#f5faf7}',
+ '#summary-app .r17-phase-header{display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap}',
+ '#summary-app .r17-phase-header strong{font-size:15px}',
+ '#summary-app .r17-phase-header span{font-size:11px;color:#698579}',
+ '#summary-app .r17-phase-numbers{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}',
+ '#summary-app .r17-phase-numbers>div{background:#fff;border:1px solid #e5eee9;border-radius:10px;padding:12px}',
+ '#summary-app .r17-phase-numbers small{display:block;color:#73847a;font-size:11px}',
+ '#summary-app .r17-phase-numbers b{display:block;font-size:21px;color:#205f50;margin:3px 0}',
+ '#summary-app .r17-phase-info p{font-size:11px;color:#6d8479;line-height:1.7;margin:12px 0 0}',
+ '@media(max-width:700px){#summary-app .r15-performance .tr2-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}#summary-app .r17-phase-numbers{grid-template-columns:1fr}#summary-app .r15-performance .r17-period-bar{align-items:flex-start!important}}',
  '#summary-app .r16-legacy-weekly,#summary-app .at-numbers,#summary-app .at-review{display:none!important}',
  '#summary-app .r15-performance .s-trend-head{display:none!important}',
  '#summary-app .r15-performance .s-period-selector{margin:0 0 16px!important;display:flex!important;gap:12px!important;align-items:center;flex-wrap:wrap}',

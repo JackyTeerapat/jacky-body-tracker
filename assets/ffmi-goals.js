@@ -128,7 +128,9 @@
       <div class="s-ffmi-note">FFMI 21.5 และ 22.5 เป็น milestone สำหรับ roadmap ไม่ใช่เกณฑ์ทางการแพทย์ว่า “ต้องถึงจึงเป็นนักกีฬา” · เป้าระยะนี้ยังคงเป็นลดไขมันโดยรักษา FFMI/แรงยกก่อน</div>
     `;
 
-    goal.insertAdjacentElement('afterend', section);
+    const advanced=goal.querySelector('.v9-advanced');
+    if(advanced?.querySelector('.v9-advanced-inner')) advanced.querySelector('.v9-advanced-inner').appendChild(section);
+    else goal.appendChild(section);
     return true;
   }
 

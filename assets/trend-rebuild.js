@@ -451,6 +451,23 @@
     chartStates.set(kind, state);
     charts.push(chart);
     bindChartGestures(state);
+
+    // Start focused on recent data, not the entire history.
+    // Daily: last 45 calendar days; weekly: last 8 weeks; monthly: last 6 months.
+    // Include a short forecast tail without letting a long prediction stretch
+    // flatten the actual data. "ทั้งหมด" still restores the full plot.
+    const historicalDays = mode === 'daily' ? 45 : mode === 'weekly' ? 8 : 6;
+    const firstVisibleDate = shiftDays(dt(series.at(-1).key), -historicalDays + (mode === 'daily' ? 1 : 0));
+    let startIndex;
+    if (mode === 'daily') {
+      startIndex = series.findIndex(point => dt(point.key) >= firstVisibleDate);
+    } else {
+      startIndex = Math.max(0, series.length - historicalDays);
+    }
+    startIndex = Math.max(0, startIndex);
+    const forecastVisible = mode === 'daily' ? 14 : mode === 'weekly' ? 3 : 2;
+    const endIndex = Math.min(plotSeries.length - 1, series.length - 1 + forecastVisible);
+    applyView(state, startIndex, endIndex);
   }
 
   function bindZoomButtons(root) {

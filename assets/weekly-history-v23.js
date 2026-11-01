@@ -14,7 +14,7 @@ function weeks(rows){
  return [...by.entries()].sort((a,b)=>b[0].localeCompare(a[0])).map(([start,list])=>{
   const end=new Date(Date.parse(start+'T00:00:00Z')+6*86400000).toISOString().slice(0,10);
   const mean=k=>{const nums=list.map(x=>N(x[k])).filter(x=>x!==null);return nums.length?nums.reduce((a,b)=>a+b,0)/nums.length:null};
-  return {start,end,count:list.length,weight:mean('weight'),fat:mean('fat'),bf:mean('bf'),muscle:mean('muscle'),heights:[...new Set(list.map(x=>N(x.height)).filter(x=>x!==null))]};
+  return {start,end,count:new Set(list.map(x=>x.isoDate)).size,hasSundayScan:list.some(x=>x.isoDate===end),weight:mean('weight'),fat:mean('fat'),bf:mean('bf'),muscle:mean('muscle'),heights:[...new Set(list.map(x=>N(x.height)).filter(x=>x!==null))]};
  });
 }
 function draw(){
@@ -26,11 +26,11 @@ function draw(){
  if(!details){details=document.createElement('details');details.className='r23-weekly-history';host.appendChild(details);}
  // Only refresh table, never reset disclosure state or duplicate it.
  const data=weeks(rows);
- const today=new Date();const localToday=new Date(today.getFullYear(),today.getMonth(),today.getDate());
+ const today=new Date();const localToday=today.getFullYear()+'-'+pad(today.getMonth()+1)+'-'+pad(today.getDate());
  const stamp=d=>{const [y,m,day]=d.split('-').map(Number);return pad(day)+'/'+pad(m)+'/'+y;};
  details.innerHTML='<summary><span>ประวัติค่าเฉลี่ยรายสัปดาห์</span><small>'+data.length+' สัปดาห์ · จันทร์–อาทิตย์</small></summary>'+
  '<div class="r23-scroll"><table><thead><tr><th>สัปดาห์</th><th>ชั่ง</th><th>Weight</th><th>Fat</th><th>Body Fat</th><th>Muscle</th></tr></thead><tbody>'+
- data.map((x,i)=>'<tr><td><b>'+stamp(x.start)+' – '+stamp(x.end)+'</b>'+(i===0&&x.end>=localToday.toISOString().slice(0,10)?'<em>ยังไม่ครบสัปดาห์</em>':'')+(x.heights.length>1?'<em>ตั้งค่าส่วนสูงต่างกัน</em>':'')+'</td><td>'+x.count+'</td><td>'+fmt(x.weight)+'</td><td>'+fmt(x.fat)+'</td><td>'+fmt(x.bf)+'%</td><td>'+fmt(x.muscle)+'</td></tr>').join('')+
+ data.map((x,i)=>'<tr><td><b>'+stamp(x.start)+' – '+stamp(x.end)+'</b>'+(i===0&&x.start<=localToday&&x.end>=localToday?'<em>'+(x.hasSundayScan?'ปิดรอบชั่งแล้ว':'สัปดาห์ปัจจุบัน')+' · '+x.count+'/7 วัน</em>':'')+(x.heights.length>1?'<em>ตั้งค่าส่วนสูงต่างกัน</em>':'')+'</td><td>'+x.count+'</td><td>'+fmt(x.weight)+'</td><td>'+fmt(x.fat)+'</td><td>'+fmt(x.bf)+'%</td><td>'+fmt(x.muscle)+'</td></tr>').join('')+
  '</tbody></table></div><p class="r23-note">Weight / Fat / Muscle หน่วย kg · เป็นค่าเฉลี่ยจากวันที่มีการชั่งจริง ไม่ใช่ครบ 7 วันทุกสัปดาห์ · การเปลี่ยนส่วนสูงเครื่องทำให้ BIA ข้ามช่วงเทียบกันไม่ได้โดยตรง</p>';
 }
 function start(){

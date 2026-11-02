@@ -50,7 +50,8 @@ const missedNames={cardio:'Cardio',protein:'Protein',weights:'เวท',calorie
 function assess(all,index){
  const w=all[index],p=all[index-1],p2=all[index-2],a=adherence(w);
  const valid=comparable(w,p);
- const d=valid?{weight:w.weight-p.weight,fat:w.fat-p.fat,muscle:w.muscle-p.muscle,water:w.water-p.water}:null;
+ const sameHeight=!!p&&w.height!==null&&p.height===w.height;
+ const d=sameHeight?{weight:w.weight-p.weight,fat:w.fat-p.fat,muscle:w.muscle-p.muscle,water:w.water-p.water}:null;
  const priorValid=comparable(p,p2);
  const prior=priorValid?{weight:p.weight-p2.weight,water:p.water-p2.water}:null;
  const waterShift=d&&Number.isFinite(d.water)&&Math.abs(d.water)>=.5;
@@ -62,8 +63,21 @@ function assess(all,index){
  }else if(!p){
   label='กำหนดค่าตั้งต้น';reason='ยังไม่มีสัปดาห์ก่อนหน้าไว้เปรียบเทียบค่าเฉลี่ย';action='คงแผนและสะสมข้อมูลสัปดาห์ถัดไป';
  }else if(!valid){
-  label='ยังประเมินไม่ได้';reason=(!good(w)||!good(p))?'ต้องมีอย่างน้อย 4 วันชั่งในแต่ละสัปดาห์ จึงเปรียบเทียบแบบมั่นใจได้':'ตั้งค่าส่วนสูงของเครื่องต่างกันหรือเปลี่ยนระหว่างสัปดาห์ จึงไม่เทียบ BIA ข้ามช่วง';
-  action='คงแผน เก็บข้อมูลให้ครบอย่างน้อย 4 วัน/สัปดาห์ และติดตามแรงยก';
+  label='ติดตามแบบระมัดระวัง';
+  if(d){
+   reason='น้ำหนักเฉลี่ยเทียบสัปดาห์ก่อน '+signed(d.weight)+' kg · ไขมัน BIA '+signed(d.fat)+' kg · กล้าม BIA '+signed(d.muscle)+' kg';
+   reason+=' แต่มีเพียง '+w.count+' และ '+p.count+' วันชั่งตามลำดับ จึงยังไม่ปรับแผนจากความต่างนี้';
+  }else reason='ช่วงนี้มีการตั้งค่าส่วนสูงเครื่องต่างกัน จึงไม่เทียบค่า BIA ข้ามช่วง';
+  let anchor=null;
+  for(let j=index-2;j>=Math.max(0,index-3);j--){
+   if(comparable(w,all[j])){anchor=all[j];break;}
+  }
+  if(anchor){
+   const gap=(dt(w.start)-dt(anchor.start))/604800000;
+   const rate=(w.weight-anchor.weight)/gap;
+   reason+=' · แนวโน้มย้อนไป '+gap+' สัปดาห์ '+signed(rate)+' kg/สัปดาห์ (ใช้ประกอบ ไม่ใช่ผลรายสัปดาห์ล่าสุด)';
+  }
+  action='คงแผนอาหารและการฝึกไว้ก่อน ตรวจการทำตามแผน แรงยก และความเปลี่ยนแปลงของน้ำ; รีวิวยืนยันสัปดาห์ถัดไป';
  }else{
   const loss=-d.weight;
   targetStatus=loss>=TARGET.weightMin&&loss<=TARGET.weightMax?'เข้าเป้าน้ำหนัก':loss<TARGET.weightMin?'น้ำหนักลดช้ากว่าเป้า':'น้ำหนักลดเร็วกว่าเป้า';
@@ -95,10 +109,10 @@ function assess(all,index){
 function stepHtml(x){
  const w=x.w,d=x.d;
  const row=(key,target,value,hint)=>'<div class="r24-metric"><small>'+esc(key)+'</small><b>'+esc(value)+'</b><span>'+esc(target)+'</span>'+(hint?'<em>'+esc(hint)+'</em>':'')+'</div>';
- const fatHint=!x.valid?'ยังไม่เทียบค่า BIA':Number.isFinite(d.fat)?'เทียบสัปดาห์ก่อน '+signed(d.fat)+' kg':'—';
- const muscleHint=!x.valid?'ยังไม่เทียบค่า BIA':Number.isFinite(d.muscle)?'เทียบสัปดาห์ก่อน '+signed(d.muscle)+' kg':'—';
+ const fatHint=!d?'ไม่เทียบข้ามการตั้งค่าส่วนสูง':'เทียบสัปดาห์ก่อน '+signed(d.fat)+' kg'+(!x.valid?' · ค่าชั่งน้อย':'');
+ const muscleHint=!d?'ไม่เทียบข้ามการตั้งค่าส่วนสูง':'เทียบสัปดาห์ก่อน '+signed(d.muscle)+' kg'+(!x.valid?' · ค่าชั่งน้อย':'');
  return '<div class="r24-metrics">'+
- row('WEIGHT AVG','เป้า −0.30 ถึง −0.50 kg/สัปดาห์',f(w.weight)+' kg',x.valid?'เปลี่ยน '+signed(d.weight)+' kg':'ไม่มีคู่เทียบที่มั่นใจ')+
+ row('WEIGHT AVG','เป้า −0.30 ถึง −0.50 kg/สัปดาห์',f(w.weight)+' kg',d?'เปลี่ยน '+signed(d.weight)+' kg'+(!x.valid?' · ประเมินเบื้องต้น':''):'ไม่เทียบข้ามการตั้งค่าส่วนสูง')+
  row('FAT MASS · BIA','เป้าหมายระยะยาวคือแนวโน้มลด',f(w.fat)+' kg',fatHint)+
  row('MUSCLE · BIA','Cut: รักษากล้าม/แรงยก ไม่บังคับเพิ่มทุกสัปดาห์',f(w.muscle)+' kg',muscleHint)+'</div>';
 }

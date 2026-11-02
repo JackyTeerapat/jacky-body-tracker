@@ -51,10 +51,11 @@ for (const file of uiScripts) {
 // Smoke-test actual weekly review decisions with synthetic, completed weeks.
 const weeklySource = fs.readFileSync('assets/weekly-history-v23.js', 'utf8');
 const yesKeys = new Set(['2025-06-09','2025-06-16'].map(k => 'jacky-trainer-adherence-v2:' + k));
+const noKeys = new Set();
 const session = {
   window: {},
   document: { readyState: 'loading', addEventListener() {} },
-  localStorage: { getItem(key) { return yesKeys.has(key) ? '{"status":"yes","missed":[]}' : null; } },
+  localStorage: { getItem(key) { return yesKeys.has(key) ? '{"status":"yes","missed":[]}' : noKeys.has(key) ? '{"status":"no","missed":["cardio"]}' : null; } },
 };
 new vm.Script(weeklySource, { filename: 'assets/weekly-history-v23.js' }).runInNewContext(session);
 const weekly = session.window.JackyWeeklyResponse;
@@ -73,9 +74,32 @@ if (reviewed.label !== 'ปรับ Cardio เล็กน้อย' || !review
   throw new Error('Weekly response should suggest a small cardio change after confirmed, repeated stalls');
 }
 yesKeys.clear();
+// One verified under-target week is sufficient for a SMALL conditional adjustment.
+yesKeys.add('jacky-trainer-adherence-v2:2025-06-16');
+const firstSlowWeek = weekly.assess(threeWeeks, 2);
+if (firstSlowWeek.label !== 'ปรับ Cardio เล็กน้อย' || !firstSlowWeek.action.includes('10 นาที')) {
+  throw new Error('A confirmed slow week must trigger a small Cardio adjustment without waiting for 2 bad weeks');
+}
+yesKeys.clear();
 const conditional = weekly.assess(threeWeeks, 2);
 if (conditional.label === 'ปรับ Cardio เล็กน้อย') {
   throw new Error('Weekly response must not auto-adjust without adherence confirmation');
+}
+if (!conditional.action.includes('เพิ่ม Zone 2')) {
+  throw new Error('Unknown adherence must provide actionable conditional advice, not only keep plan');
+}
+noKeys.add('jacky-trainer-adherence-v2:2025-06-16');
+const missed = weekly.assess(threeWeeks, 2);
+if (missed.label !== 'กลับมาทำแผนให้ครบ') throw new Error('Missed weekly plan must be corrected before increasing activity');
+noKeys.clear();
+yesKeys.add('jacky-trainer-adherence-v2:2025-06-16');
+const waterChanged = sample.map(x => x.isoDate >= '2025-06-16' ? { ...x, waterWeight: 47.2 } : x);
+if (weekly.assess(weekly.weeks(waterChanged), 2).label === 'ปรับ Cardio เล็กน้อย') {
+  throw new Error('Do not increase Cardio on a large water shift');
+}
+const muscleDropped = sample.map(x => x.isoDate >= '2025-06-16' ? { ...x, muscle: 58.3 } : x);
+if (weekly.assess(weekly.weeks(muscleDropped), 2).label === 'ปรับ Cardio เล็กน้อย') {
+  throw new Error('Do not increase Cardio when BIA muscle sharply falls');
 }
 const heightChanged = sample.map(x => x.isoDate < '2025-06-16' ? { ...x, height: 176 } : x);
 if (weekly.assess(weekly.weeks(heightChanged), 2).label === 'ปรับ Cardio เล็กน้อย') {

@@ -158,6 +158,14 @@ function draw(){
  (items.length>1?'<details class="r24-past" '+(wasOpen?'open':'')+'><summary>รีวิวย้อนหลัง '+(items.length-1)+' สัปดาห์ <small>เลือกเปิดดูคำแนะนำแต่ละสัปดาห์</small></summary><div class="r24-history">'+items.slice(1).map(x=>detailsHtml(assess(data,x.i),false)).join('')+'</div></details>':'')+
  '<p class="r24-foot">เป้าน้ำหนักเฉลี่ย −0.30 ถึง −0.50 kg/สัปดาห์; BIA เป็นเพียงค่าแนวโน้มและไม่บังคับให้กล้ามเพิ่มทุกสัปดาห์ · การเพิ่ม Cardio เป็นคำแนะนำที่มีเงื่อนไขว่าทำตามแผนครบและฟื้นตัวดี หากเพิ่งป่วยหรือแรงตกควรเน้นการฟื้นตัว · ประวัติย้อนหลังเป็นการประเมินด้วยกฎปัจจุบัน ไม่ใช่หลักฐานว่าเคยทำตามคำแนะนำ</p>';
  board.querySelectorAll('details.r24-week').forEach(x=>{if(openedWeeks.has(x.dataset.weekKey))x.open=true});
+ const personal=document.querySelector('#summary-app .at-trainer');
+ if(personal&&last){
+  const review=assess(data,last.i);
+  const h=personal.querySelector('.at-head h2');
+  const a=personal.querySelector('.at-action strong');
+  if(h)h.textContent=review.label;
+  if(a)a.textContent=review.action;
+ }
  // Keep the existing numeric table for people who want raw averages.
  let history=host.querySelector('.r23-weekly-history');
  if(!history){history=document.createElement('details');history.className='r23-weekly-history';host.appendChild(history);}

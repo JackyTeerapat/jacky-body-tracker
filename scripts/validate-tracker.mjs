@@ -48,63 +48,38 @@ for (const file of uiScripts) {
   new vm.Script(code, { filename: file });
 }
 
-// Smoke-test actual weekly review decisions with synthetic, completed weeks.
+// Smoke-test concise weekly coach decisions, independent of manual adherence prompts.
 const weeklySource = fs.readFileSync('assets/weekly-history-v23.js', 'utf8');
-const yesKeys = new Set(['2025-06-09','2025-06-16'].map(k => 'jacky-trainer-adherence-v2:' + k));
-const noKeys = new Set();
-const session = {
-  window: {},
-  document: { readyState: 'loading', addEventListener() {} },
-  localStorage: { getItem(key) { return yesKeys.has(key) ? '{"status":"yes","missed":[]}' : noKeys.has(key) ? '{"status":"no","missed":["cardio"]}' : null; } },
+const session = {window:{}, document:{readyState:'loading',addEventListener(){}}};
+new vm.Script(weeklySource,{filename:'assets/weekly-history-v23.js'}).runInNewContext(session);
+const weekly=session.window.JackyWeeklyResponse;
+if(!weekly||typeof weekly.assess!=='function')throw new Error('Weekly response API missing');
+const makeWeek=(start,weight,days=4,extra={})=>{
+ const epoch=Date.parse(start+'T00:00:00Z');
+ return Array.from({length:days},(_,i)=>{
+  const isoDate=new Date(epoch+i*86400000).toISOString().slice(0,10);
+  return {isoDate,measuredAt:isoDate+'T08:00:00',height:178,weight,fat:16,muscle:59,bf:20,waterWeight:46.5,...extra};
+ });
 };
-new vm.Script(weeklySource, { filename: 'assets/weekly-history-v23.js' }).runInNewContext(session);
-const weekly = session.window.JackyWeeklyResponse;
-if (!weekly || typeof weekly.assess !== 'function') throw new Error('Weekly response API missing');
-const sample = [];
-for (const [start, weight] of [['2025-06-02', 80], ['2025-06-09', 79.9], ['2025-06-16', 79.8]]) {
-  const epoch = Date.parse(start + 'T00:00:00Z');
-  for (let n = 0; n < 4; n++) {
-    const isoDate = new Date(epoch + n * 86400000).toISOString().slice(0, 10);
-    sample.push({ isoDate, measuredAt: isoDate + 'T08:00:00', height: 178, weight, fat: 16.0, muscle: 59.0, bf: 20, waterWeight: 46.5 });
-  }
-}
-const threeWeeks = weekly.weeks(sample);
-const reviewed = weekly.assess(threeWeeks, 2);
-if (reviewed.label?.startsWith('ปรับ Cardio') !== true || !reviewed.action.includes('10 นาที')) {
-  throw new Error('Weekly response should suggest a small cardio change after confirmed, repeated stalls');
-}
-yesKeys.clear();
-// One verified under-target week is sufficient for a SMALL conditional adjustment.
-yesKeys.add('jacky-trainer-adherence-v2:2025-06-16');
-const firstSlowWeek = weekly.assess(threeWeeks, 2);
-if (firstSlowWeek.label?.startsWith('ปรับ Cardio') !== true || !firstSlowWeek.action.includes('10 นาที')) {
-  throw new Error('A confirmed slow week must trigger a small Cardio adjustment without waiting for 2 bad weeks');
-}
-yesKeys.clear();
-const conditional = weekly.assess(threeWeeks, 2);
-if (conditional.label?.startsWith('ปรับ Cardio') === true) {
-  throw new Error('Weekly response must not auto-adjust without adherence confirmation');
-}
-if (!conditional.action.includes('เพิ่ม Zone 2')) {
-  throw new Error('Unknown adherence must provide actionable conditional advice, not only keep plan');
-}
-noKeys.add('jacky-trainer-adherence-v2:2025-06-16');
-const missed = weekly.assess(threeWeeks, 2);
-if (missed.label !== 'กลับมาทำแผนให้ครบ') throw new Error('Missed weekly plan must be corrected before increasing activity');
-noKeys.clear();
-yesKeys.add('jacky-trainer-adherence-v2:2025-06-16');
-const waterChanged = sample.map(x => x.isoDate >= '2025-06-16' ? { ...x, waterWeight: 47.2 } : x);
-if (weekly.assess(weekly.weeks(waterChanged), 2).label?.startsWith('ปรับ Cardio') === true) {
-  throw new Error('Do not increase Cardio on a large water shift');
-}
-const muscleDropped = sample.map(x => x.isoDate >= '2025-06-16' ? { ...x, muscle: 58.3 } : x);
-if (weekly.assess(weekly.weeks(muscleDropped), 2).label?.startsWith('ปรับ Cardio') === true) {
-  throw new Error('Do not increase Cardio when BIA muscle sharply falls');
-}
-const heightChanged = sample.map(x => x.isoDate < '2025-06-16' ? { ...x, height: 176 } : x);
-if (weekly.assess(weekly.weeks(heightChanged), 2).label?.startsWith('ปรับ Cardio') === true) {
-  throw new Error('Weekly response must not compare BIA across height calibration changes');
-}
+const first=makeWeek('2025-06-02',80);
+const second=makeWeek('2025-06-09',79.9);
+const third=makeWeek('2025-06-16',79.8);
+const data=weekly.weeks([...first,...second,...third]);
+const slow=weekly.assess(data,2);
+if(slow.label!=='ลดช้ากว่าเป้า'||!slow.action.includes('10 นาที/ครั้ง'))throw new Error('Slow response must explicitly suggest 10 extra cardio minutes');
+const sparse=weekly.assess(weekly.weeks([...first,...second.slice(0,3),...third]),2);
+if(sparse.label!=='ลดช้ากว่าเป้า'||!sparse.provisional)throw new Error('Sparse previous week should allow a provisional, actionable review');
+const missing=weekly.assess(weekly.weeks([...first,...second.slice(0,1),...third]),2);
+if(missing.label==='ลดช้ากว่าเป้า')throw new Error('One prior scan is not sufficient to increase cardio');
+const hydrated=weekly.assess(weekly.weeks([...first,...second,...makeWeek('2025-06-16',79.8,4,{waterWeight:47.2})]),2);
+if(hydrated.label==='ลดช้ากว่าเป้า')throw new Error('Do not increase cardio amid large water shifts');
+const muscleLoss=weekly.assess(weekly.weeks([...first,...second,...makeWeek('2025-06-16',79.8,4,{muscle:58.3})]),2);
+if(muscleLoss.label==='ลดช้ากว่าเป้า')throw new Error('Protect recovery when muscle BIA sharply drops');
+const good=weekly.assess(weekly.weeks([...first,...second,...makeWeek('2025-06-16',79.5)]),2);
+if(good.label!=='ลดตามเป้า')throw new Error('Target-range weight loss must keep the plan');
+const changedHeight=weekly.assess(weekly.weeks([...first,...second,...makeWeek('2025-06-16',79.8,4,{height:176})]),2);
+if(changedHeight.d.fat!==null||changedHeight.d.muscle!==null)throw new Error('BIA must not be compared across height changes');
+if(weeklySource.includes('ทำตามแผนสัปดาห์นี้ครบไหม?'))throw new Error('Weekly review still contains unwanted adherence question');
 
 const indexText = fs.readFileSync('index.html', 'utf8');
 for (const file of uiScripts) {

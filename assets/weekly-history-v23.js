@@ -126,19 +126,51 @@ function stepHtml(x){
  row('FAT MASS · BIA','เป้าหมายระยะยาวคือแนวโน้มลด',f(w.fat)+' kg',fatHint)+
  row('MUSCLE · BIA','Cut: รักษากล้าม/แรงยก ไม่บังคับเพิ่มทุกสัปดาห์',f(w.muscle)+' kg',muscleHint)+'</div>';
 }
+function selectionHtml(x){
+ const w=x.w;
+ return '<div class="r24-check"><span>ทำตามแผนสัปดาห์นี้ครบไหม?</span><div class="r24-buttons">'+
+  '<button type="button" data-week="'+esc(w.start)+'" data-confirm="yes" aria-pressed="'+(x.adherence.status==='yes')+'">ทำครบ</button>'+
+  '<button type="button" data-week="'+esc(w.start)+'" data-confirm="no" aria-pressed="'+(x.adherence.status==='no')+'">ทำไม่ครบ</button>'+
+  '</div></div>';
+}
 function detailsHtml(x,isLatest){
  const w=x.w;
  const a=x.adherence.status==='yes'?'ทำตามแผนครบ':x.adherence.status==='no'?'บันทึกว่าทำไม่ครบ':'ยังไม่มีบันทึกการทำตามแผน';
- const selection='<div class="r24-check"><span>สัปดาห์นี้คุณทำตามแผนครบไหม?</span><div class="r24-buttons">'+
-  '<button type="button" data-week="'+esc(w.start)+'" data-confirm="yes" aria-pressed="'+(x.adherence.status==='yes')+'">ทำครบ</button>'+
-  '<button type="button" data-week="'+esc(w.start)+'" data-confirm="no" aria-pressed="'+(x.adherence.status==='no')+'">ทำไม่ครบ</button>'+
-  '</div><small>คำตอบจะเปลี่ยนคำแนะนำทันทีและบันทึกเฉพาะในเบราว์เซอร์นี้</small></div>';
+ const selection=selectionHtml(x);
  return '<details class="r24-week '+(isLatest?'r24-latest':'')+'" data-week-key="'+esc(w.start)+'" '+(isLatest?'open':'')+'><summary><span><b>'+stamp(w.start)+' – '+stamp(w.end)+'</b><small>'+w.count+'/7 วันชั่ง · '+esc(a)+'</small></span><strong class="r24-status '+x.tone+'">'+esc(x.label)+'</strong></summary>'+
  '<div class="r24-body">'+stepHtml(x)+
  '<p class="r24-evidence"><b>ประเมิน:</b> '+esc(x.targetStatus?x.targetStatus+' · '+x.muscleStatus+' · '+x.reason:x.reason)+'</p>'+
  '<div class="r24-next '+(x.tone==='adjust'?'r24-change':'')+'"><small>แผนสัปดาห์ถัดไป</small><b>'+esc(x.action)+'</b></div>'+
  (w.closed?selection:'')+
  '</div></details>';
+}
+function trainerSummary(review){
+ const w=review.w,d=review.d;
+ const slow=!!(d&&d.weight>-.30);
+ const adherence=review.adherence.status;
+ const weak=!!(d&&d.muscle<-.30);
+ const risk=!!(d&&Number.isFinite(d.water)&&Math.abs(d.water)>=.5);
+ const title=!d?'รอผลเทียบที่ใช้ได้':slow?'น้ำหนักลดช้ากว่าเป้า':d.weight<-.50?'น้ำหนักลดเร็วกว่าเป้า':'น้ำหนักเข้าเป้า';
+ let action=review.action;
+ if(!review.valid&&d){
+  if(slow){
+   if(adherence==='no') action='ทำส่วนที่ขาดให้ครบก่อน แล้วติดตามค่าเฉลี่ยสัปดาห์หน้า';
+   else if(adherence==='yes') action='ชั่งยืนยันอย่างน้อย 4 วันในสัปดาห์หน้า; ถ้ายังลดช้าและฟื้นตัวดี เพิ่ม Zone 2 อีก 5–10 นาที/ครั้ง × 4 วัน';
+   else action='เลือก “ทำครบ / ทำไม่ครบ” ด้านล่าง ถ้าทำครบและฟื้นตัวดีให้ติดตามอีกสัปดาห์เพื่อยืนยันก่อนเพิ่ม Zone 2 5–10 นาที/ครั้ง';
+  }else action='ประเมินค่าเฉลี่ยอีกสัปดาห์โดยชั่งอย่างน้อย 4 วัน แล้วคงเวทเพื่อรักษาแรงยก';
+ }
+ const sampleNote=review.p?'ชั่ง '+w.count+' วัน เทียบสัปดาห์ก่อน '+review.p.count+' วัน':'ชั่ง '+w.count+' วัน';
+ const uncertainty=!review.valid?' · ผลเทียบเบื้องต้น':risk?' · น้ำเปลี่ยนมาก':'';
+ const status=review.valid?review.label:title;
+ return '<div class="r25-summary-head"><small>สิ่งที่ควรทำตั้งแต่วันนี้ · '+stamp(w.start)+' – '+stamp(w.end)+'</small><b>'+esc(status)+'</b><span>'+esc(sampleNote+uncertainty)+'</span></div>'+
+ '<div class="r25-summary-stats">'+
+ '<div><small>น้ำหนักเฉลี่ย</small><b>'+f(w.weight)+' kg</b><em>'+(d?signed(d.weight)+' kg / สัปดาห์':'—')+' · เป้า −0.30 ถึง −0.50</em></div>'+
+ '<div><small>ไขมัน BIA</small><b>'+f(w.fat)+' kg</b><em>'+(d?signed(d.fat)+' kg':'เทียบไม่ได้')+'</em></div>'+
+ '<div><small>กล้ามเนื้อ BIA</small><b>'+f(w.muscle)+' kg</b><em>'+(d?signed(d.muscle)+' kg':'เทียบไม่ได้')+'</em></div>'+
+ '</div>'+
+ '<div class="r25-prescription"><small>แผนสัปดาห์ถัดไป</small><strong>'+esc(action)+'</strong></div>'+
+ '<p class="r25-context">'+esc(!review.valid?'สาเหตุที่ยังไม่เพิ่มกิจกรรมทันที: ข้อมูลสัปดาห์ที่เทียบไม่ครบ 4 วัน หรือค่าตั้งเครื่องไม่ตรงกัน':review.reason)+'</p>'+
+ selectionHtml(review);
 }
 function draw(){
  const host=document.querySelector('#summary-app .r15-performance-content');
@@ -153,21 +185,21 @@ function draw(){
  const existing=board.querySelector('details.r24-past');
  const wasOpen=!!existing?.open;
  const openedWeeks=new Set([...board.querySelectorAll('details.r24-week[open]')].map(x=>x.dataset.weekKey));
- board.innerHTML='<div class="r24-heading"><div><small>WEEKLY RESPONSE · เป้าหมาย vs ผลจริง</small><h3>ร่างกายตอบสนองต่อแผน Cut อย่างไร?</h3><p>ประเมินจากค่าเฉลี่ยรายสัปดาห์ ไม่ใช่ผลชั่งวันเดียว</p></div></div>'+
- (last?detailsHtml(assess(data,last.i),true):'<p>ยังไม่มีสัปดาห์ที่ปิดรอบ</p>')+
- (items.length>1?'<details class="r24-past" '+(wasOpen?'open':'')+'><summary>รีวิวย้อนหลัง '+(items.length-1)+' สัปดาห์ <small>เลือกเปิดดูคำแนะนำแต่ละสัปดาห์</small></summary><div class="r24-history">'+items.slice(1).map(x=>detailsHtml(assess(data,x.i),false)).join('')+'</div></details>':'')+
- '<p class="r24-foot">เป้าน้ำหนักเฉลี่ย −0.30 ถึง −0.50 kg/สัปดาห์; BIA เป็นเพียงค่าแนวโน้มและไม่บังคับให้กล้ามเพิ่มทุกสัปดาห์ · การเพิ่ม Cardio เป็นคำแนะนำที่มีเงื่อนไขว่าทำตามแผนครบและฟื้นตัวดี หากเพิ่งป่วยหรือแรงตกควรเน้นการฟื้นตัว · ประวัติย้อนหลังเป็นการประเมินด้วยกฎปัจจุบัน ไม่ใช่หลักฐานว่าเคยทำตามคำแนะนำ</p>';
+ board.innerHTML=(items.length>1
+ ?'<details class="r24-past" '+(wasOpen?'open':'')+'><summary>รีวิวย้อนหลัง '+(items.length-1)+' สัปดาห์ <small>ดูผลและคำแนะนำแยกสัปดาห์</small></summary><div class="r24-history">'+items.slice(1).map(x=>detailsHtml(assess(data,x.i),false)).join('')+'</div></details>'
+ :'')+
+ '<p class="r24-foot">รีวิวสัปดาห์ล่าสุดย้ายไปอยู่ที่ Personal Trainer ด้านบนแล้ว · ประวัตินี้จำลองคำแนะนำจากข้อมูลที่ผ่านมา ไม่ใช่หลักฐานว่าเคยทำตามจริง</p>';
  board.querySelectorAll('details.r24-week').forEach(x=>{if(openedWeeks.has(x.dataset.weekKey))x.open=true});
  const personal=document.querySelector('#summary-app .at-trainer');
  if(personal&&last){
   const review=assess(data,last.i);
   const h=personal.querySelector('.at-head h2');
-  const a=personal.querySelector('.at-action strong');
+  const actionCard=personal.querySelector('.at-action');
   const note=personal.querySelector('.at-reason');
   const badge=personal.querySelector('.at-badge');
   if(h)h.textContent=review.label;
-  if(a)a.textContent=review.action;
-  if(note)note.textContent='สรุป '+stamp(review.w.start)+' – '+stamp(review.w.end)+' · '+review.reason;
+  if(actionCard){actionCard.classList.add('r25-trainer-summary');actionCard.innerHTML=trainerSummary(review);}
+  if(note)note.textContent='ข้อมูลสัปดาห์นี้อาจได้รับผลจากการเปลี่ยนระดับน้ำและการฟื้นตัว · ให้ดูแรงยกและความสม่ำเสมอร่วมด้วย';
   if(badge){badge.textContent='WEEKLY REVIEW';badge.classList.toggle('ok',review.tone==='good')}
  }
  // Keep the existing numeric table for people who want raw averages.
@@ -209,6 +241,21 @@ function boot(){
  '#summary-app .r24-next b{font-size:13px;color:#214e39}',
  '#summary-app .r24-change{background:#eaf3fb}',
  '#summary-app .r24-change b{color:#235e87}',
+ '#summary-app .r25-trainer-summary{background:#fff!important;border:1px solid #dce7df!important;padding:16px!important}',
+ '#summary-app .r25-summary-head{display:flex;flex-direction:column;gap:3px;margin-bottom:12px}',
+ '#summary-app .r25-summary-head small{font-size:11px;color:#6f887a}',
+ '#summary-app .r25-summary-head>b{font-size:17px;color:#234a37}',
+ '#summary-app .r25-summary-head>span{font-size:11px;color:#84918a}',
+ '#summary-app .r25-summary-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}',
+ '#summary-app .r25-summary-stats>div{background:#f6faf7;border:1px solid #e3ece6;border-radius:10px;padding:12px;min-width:0}',
+ '#summary-app .r25-summary-stats small{display:block;font-size:10px;color:#698477}',
+ '#summary-app .r25-summary-stats b{display:block;font-size:17px;color:#28513b}',
+ '#summary-app .r25-summary-stats em{display:block;font-size:10px;font-style:normal;color:#658678;line-height:1.6}',
+ '#summary-app .r25-prescription{margin:12px 0 5px;padding:12px 14px;border-radius:11px;background:#eaf4ef}',
+ '#summary-app .r25-prescription small{display:block;font-size:11px;color:#54806b}',
+ '#summary-app .r25-prescription strong{display:block;font-size:14px!important;color:#24533e!important;line-height:1.6}',
+ '#summary-app .r25-context{font-size:11px;line-height:1.6;color:#698075;margin:7px 0}',
+ '@media(max-width:650px){#summary-app .r25-summary-stats{grid-template-columns:1fr}#summary-app .r25-summary-stats>div{padding:9px}}',
  '#summary-app .r24-check{margin-top:13px;padding:12px;border:1px solid #e2ece5;border-radius:11px;background:#fff}',
  '#summary-app .r24-check>span{font-size:12px;font-weight:600;display:block}',
  '#summary-app .r24-buttons{display:flex;gap:8px;margin:8px 0}',

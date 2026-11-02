@@ -65,8 +65,13 @@ function assess(all,index){
  }else if(!valid){
   label='ติดตามแบบระมัดระวัง';
   if(d){
-   reason='น้ำหนักเฉลี่ยเทียบสัปดาห์ก่อน '+signed(d.weight)+' kg · ไขมัน BIA '+signed(d.fat)+' kg · กล้าม BIA '+signed(d.muscle)+' kg';
-   reason+=' แต่มีเพียง '+w.count+' และ '+p.count+' วันชั่งตามลำดับ จึงยังไม่ปรับแผนจากความต่างนี้';
+   const weightGoal=d.weight<=-.30&&d.weight>=-.50?'น้ำหนักเข้าเป้า':d.weight>-.30?'น้ำหนักลดช้ากว่าเป้า':'น้ำหนักลดเร็วกว่ากรอบ';
+   const fatGoal=d.fat<-.10?'ไขมัน BIA ลด':d.fat>.10?'ไขมัน BIA เพิ่ม':'ไขมัน BIA ทรงตัว';
+   const muscleGoal=d.muscle<-.15?'กล้าม BIA ต่ำกว่าสัปดาห์ก่อน':'กล้าม BIA ทรงตัว';
+   targetStatus=weightGoal+' (เบื้องต้น)';
+   muscleStatus=muscleGoal;
+   reason=weightGoal+' '+signed(d.weight)+' kg · '+fatGoal+' '+signed(d.fat)+' kg · '+muscleGoal+' '+signed(d.muscle)+' kg';
+   reason+=' · ชั่งเพียง '+w.count+' และ '+p.count+' วันในสองสัปดาห์ จึงไม่ใช้ผลนี้ปรับแผนทันที';
   }else reason='ช่วงนี้มีการตั้งค่าส่วนสูงเครื่องต่างกัน จึงไม่เทียบค่า BIA ข้ามช่วง';
   let anchor=null;
   for(let j=index-2;j>=Math.max(0,index-3);j--){

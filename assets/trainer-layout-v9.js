@@ -46,16 +46,28 @@ trainer.classList.add('v14-coach-panel');
 goal.classList.add('v14-goal-panel');
 w.querySelector('.s-this-week-preview')?.classList.add('v9-hide');
 w.querySelector('.s-metric-goal-grid')?.classList.add('v9-hide');
-const sm=d.sm||{},arm=Math.abs((+sm.ra||0)-(+sm.la||0)),leg=Math.abs((+sm.rl||0)-(+sm.ll||0));
-let insight=trainer.querySelector('.v9-insight');if(!insight){insight=document.createElement('section');insight.className='v9-insight';(trainer.querySelector('.at-action')||trainer).insertAdjacentElement('afterend',insight);}
-insight.innerHTML='<b>วิเคราะห์กล้ามเนื้อรายส่วน</b><p>'+(arm<.2&&leg<.3?'แขนและขาทั้งสองข้างค่อนข้างสมดุลตามค่า BIA':'พบค่ากล้ามสองข้างต่างกัน ควรตรวจแนวโน้มและแรงยกก่อนปรับการฝึก')+' · แขนต่าง '+f(arm)+' kg · ขาต่าง '+f(leg)+' kg</p><small>ไม่สั่งเพิ่มเซตจากผล BIA ครั้งเดียว และไม่ใช้ไขมันเฉพาะจุดสั่งท่าออกกำลังกาย</small>';
+// One trainer decision, no duplicate adherence question or segmental BIA commentary.
+trainer.querySelector('.v9-insight')?.remove();
+trainer.querySelector('.v9-compliance')?.remove();
+trainer.querySelector('.at-reason')?.remove();
+trainer.querySelector('.at-numbers')?.remove();
 trainer.querySelector('.at-review')?.remove();
-const history=trainer.querySelector('.at-numbers');if(history){history.classList.add('v10-week-stats');}
-const summary=trainer.querySelector('.at-reason');if(summary){summary.classList.add('v10-reason');}
-
-let plan=trainer.querySelector('.v9-plan');if(!plan){plan=document.createElement('section');plan.className='v9-plan';plan.innerHTML='<b>แผนสัปดาห์นี้ · เป้าหมายเริ่มต้น</b><div class="v9-plan-grid">'+[['Cardio Zone 2','250 นาที/สัปดาห์'],['Protein','150 g/วัน'],['Carbs','230 g/วัน'],['Fat','70 g/วัน'],['Calories','2,150 kcal/วัน']].map(x=>'<div><span>'+x[0]+'</span><strong>'+x[1]+'</strong></div>').join('')+'</div><small>เป้าหมายอาหารสำหรับประเมินเบื้องต้น ยังไม่ได้ยืนยันว่ากินจริง · 150×4 + 230×4 + 70×9 = 2,150 kcal</small>';insight.insertAdjacentElement('afterend',plan);}
-
-let compliance=trainer.querySelector('.v9-compliance');if(!compliance){compliance=document.createElement('div');compliance.className='v9-compliance';compliance.innerHTML='<b>สัปดาห์ที่แล้วทำตามแผนหรือไม่?</b><div><button type="button" data-answer="yes">ทำครบ</button><button type="button" data-answer="no">ทำไม่ครบ</button></div><p class="v9-response">เลือกเพื่อดูคำแนะนำที่เหมาะสม (ยังไม่บันทึก)</p>';trainer.appendChild(compliance);try{const saved=localStorage.getItem('jacky-trainer-compliance:'+new Date(new Date(d.isoDate+'T00:00:00Z').getTime() - ((new Date(d.isoDate+'T00:00:00Z').getUTCDay()+6)%7)*86400000).toISOString().slice(0,10));if(saved==='yes'||saved==='no'){const button=compliance.querySelector('button[data-answer="'+saved+'"]');if(button){button.classList.add('on');compliance.querySelector('.v9-response').textContent=saved==='yes'?'ทำครบ: ประเมินผลแล้วค่อยปรับทีละอย่างถ้าไม่เข้าเป้า':'ทำไม่ครบ: กลับไปทำแผนเดิมให้ครบก่อน';}}}catch(_){}compliance.addEventListener('click',e=>{const b=e.target.closest('button[data-answer]');if(!b)return;compliance.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));try{localStorage.setItem('jacky-trainer-compliance:'+new Date(new Date(d.isoDate+'T00:00:00Z').getTime() - ((new Date(d.isoDate+'T00:00:00Z').getUTCDay()+6)%7)*86400000).toISOString().slice(0,10),b.dataset.answer)}catch(_){}compliance.querySelector('.v9-response').textContent=b.dataset.answer==='yes'?'ทำครบ: ถ้าผลยังช้ากว่าเป้าต่อเนื่อง จึงค่อยปรับอาหารหรือ Cardio ทีละอย่าง':'ทำไม่ครบ: กลับไปทำแผนเดิมให้ครบก่อน ยังไม่ต้องเพิ่มความหนักหรือลดแคลอรีเพิ่ม';});}
+let plan=trainer.querySelector('.v9-plan');
+if(plan&&plan.tagName!=='DETAILS'){
+ const fold=document.createElement('details');fold.className='v9-plan';
+ fold.innerHTML='<summary>ดูเป้าหมายอาหารและ Cardio</summary>';
+ const body=document.createElement('div');body.className='v9-plan-body';
+ while(plan.firstChild)body.appendChild(plan.firstChild);
+ fold.appendChild(body);plan.replaceWith(fold);plan=fold;
+}
+if(!plan){
+ plan=document.createElement('details');plan.className='v9-plan';
+ plan.innerHTML='<summary>ดูเป้าหมายอาหารและ Cardio</summary><div class="v9-plan-body"><div class="v9-plan-grid">'+
+ [['Cardio Zone 2','250 นาที/สัปดาห์'],['Protein','150 g/วัน'],['Carbs','230 g/วัน'],['Fat','70 g/วัน'],['Calories','2,150 kcal/วัน']]
+ .map(x=>'<div><span>'+x[0]+'</span><strong>'+x[1]+'</strong></div>').join('')+
+ '</div><small>ค่าเป้าหมายตั้งต้น ไม่ใช่ข้อมูลการกินจริง</small></div>';
+ (trainer.querySelector('.at-action')||trainer).insertAdjacentElement('afterend',plan);
+}
 if(ffmi){let advanced=w.querySelector('.v9-advanced');if(!advanced){advanced=document.createElement('details');advanced.className='v9-advanced';advanced.innerHTML='<summary>FFMI · MUSCLE ROADMAP · ดูเป้าหมายกล้ามเนื้อ</summary><div class="v9-advanced-inner"></div>';}advanced.querySelector('.v9-advanced-inner').appendChild(ffmi);goal.appendChild(advanced);}
 }
 function start(){
@@ -70,6 +82,9 @@ const style=document.createElement('style');style.textContent=[
 '#summary-app .at-action small{font-size:12px!important}',
 '#summary-app .at-action strong{font-size:19px!important;line-height:1.55!important;margin-top:7px!important}',
 '#summary-app .v9-plan{padding:18px!important;margin:16px 0!important;background:#fff!important}',
+ '#summary-app .v9-plan>summary{cursor:pointer;font-size:12px;font-weight:600;color:#506c5c}',
+ '#summary-app .v9-plan:not([open]){padding:10px 13px!important;margin:10px 0!important}',
+ '#summary-app .v9-plan-body{padding-top:12px}',
 '#summary-app .v9-plan>b{font-size:16px!important}',
 '#summary-app .v9-plan-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px!important;margin:17px 0!important}',
 '#summary-app .v9-plan-grid div{font-size:13px!important;display:flex!important;flex-direction:column!important;gap:4px!important}',

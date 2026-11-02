@@ -39,12 +39,47 @@ const uiScripts = [
   'assets/goal-progress-v2.js',
   'assets/range-controls.js',
   'assets/trend-rebuild.js',
-  'assets/detail-range-sync.js'
+  'assets/detail-range-sync.js',
+  'assets/weekly-history-v23.js'
 ];
 
 for (const file of uiScripts) {
   const code = fs.readFileSync(file, 'utf8');
   new vm.Script(code, { filename: file });
+}
+
+// Smoke-test actual weekly review decisions with synthetic, completed weeks.
+const weeklySource = fs.readFileSync('assets/weekly-history-v23.js', 'utf8');
+const yesKeys = new Set(['2025-06-09','2025-06-16'].map(k => 'jacky-trainer-adherence-v2:' + k));
+const session = {
+  window: {},
+  document: { readyState: 'loading', addEventListener() {} },
+  localStorage: { getItem(key) { return yesKeys.has(key) ? '{"status":"yes","missed":[]}' : null; } },
+};
+new vm.Script(weeklySource, { filename: 'assets/weekly-history-v23.js' }).runInNewContext(session);
+const weekly = session.window.JackyWeeklyResponse;
+if (!weekly || typeof weekly.assess !== 'function') throw new Error('Weekly response API missing');
+const sample = [];
+for (const [start, weight] of [['2025-06-02', 80], ['2025-06-09', 79.9], ['2025-06-16', 79.8]]) {
+  const epoch = Date.parse(start + 'T00:00:00Z');
+  for (let n = 0; n < 4; n++) {
+    const isoDate = new Date(epoch + n * 86400000).toISOString().slice(0, 10);
+    sample.push({ isoDate, measuredAt: isoDate + 'T08:00:00', height: 178, weight, fat: 16.0, muscle: 59.0, bf: 20, waterWeight: 46.5 });
+  }
+}
+const threeWeeks = weekly.weeks(sample);
+const reviewed = weekly.assess(threeWeeks, 2);
+if (reviewed.label !== 'ปรับ Cardio เล็กน้อย' || !reviewed.action.includes('10 นาที')) {
+  throw new Error('Weekly response should suggest a small cardio change after confirmed, repeated stalls');
+}
+yesKeys.clear();
+const conditional = weekly.assess(threeWeeks, 2);
+if (conditional.label === 'ปรับ Cardio เล็กน้อย') {
+  throw new Error('Weekly response must not auto-adjust without adherence confirmation');
+}
+const heightChanged = sample.map(x => x.isoDate < '2025-06-16' ? { ...x, height: 176 } : x);
+if (weekly.assess(weekly.weeks(heightChanged), 2).label === 'ปรับ Cardio เล็กน้อย') {
+  throw new Error('Weekly response must not compare BIA across height calibration changes');
 }
 
 const indexText = fs.readFileSync('index.html', 'utf8');

@@ -6,7 +6,7 @@ const mean=a=>a.length?a.reduce((s,v)=>s+v,0)/a.length:null;
 const f=(x,n=2)=>Number.isFinite(x)?x.toFixed(n):'—';
 const signed=(x,n=2)=>Number.isFinite(x)?(x>0?'+':'')+x.toFixed(n):'—';
 const pad=x=>String(x).padStart(2,'0');
-const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;':'&quot;',"'":'&#39;'}[c]));
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const dt=s=>new Date(s+'T00:00:00Z');
 const iso=d=>d.toISOString().slice(0,10);
 const add=(date,days)=>iso(new Date(dt(date).getTime()+days*86400000));

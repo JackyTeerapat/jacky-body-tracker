@@ -4,7 +4,11 @@ function lastWeekKey(){
  const last=data.filter(x=>x?.isoDate).map(x=>x.isoDate).sort().at(-1);
  if(!last)return 'unknown';
  const t=new Date(last+'T00:00:00Z'),dow=(t.getUTCDay()+6)%7;
- t.setUTCDate(t.getUTCDate()-dow-7);
+ t.setUTCDate(t.getUTCDate()-dow);
+ const end=new Date(t.getTime()+6*86400000).toISOString().slice(0,10);
+ const localToday=new Date(Date.now()+7*3600000).toISOString().slice(0,10);
+ // On Sunday, an existing Sunday scan closes the week. Otherwise use last closed week.
+ if(localToday<end||(localToday===end&&last!==end))t.setUTCDate(t.getUTCDate()-7);
  return t.toISOString().slice(0,10);
 }
 const misses=[['cardio','Cardio Zone 2'],['protein','Protein'],['weights','Weight Training'],['calories','Calories / อาหาร']];

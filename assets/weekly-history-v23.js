@@ -163,8 +163,12 @@ function draw(){
   const review=assess(data,last.i);
   const h=personal.querySelector('.at-head h2');
   const a=personal.querySelector('.at-action strong');
+  const note=personal.querySelector('.at-reason');
+  const badge=personal.querySelector('.at-badge');
   if(h)h.textContent=review.label;
   if(a)a.textContent=review.action;
+  if(note)note.textContent='สรุป '+stamp(review.w.start)+' – '+stamp(review.w.end)+' · '+review.reason;
+  if(badge){badge.textContent='WEEKLY REVIEW';badge.classList.toggle('ok',review.tone==='good')}
  }
  // Keep the existing numeric table for people who want raw averages.
  let history=host.querySelector('.r23-weekly-history');
@@ -239,6 +243,11 @@ function boot(){
   const status=btn.dataset.confirm;
   if(!['yes','no'].includes(status))return;
   try{localStorage.setItem(key,JSON.stringify({status,missed:[]}))}catch(err){console.warn('Cannot save weekly adherence',err)}
+  const tag=document.querySelector('#summary-app .v20-tag');
+  if(tag&&tag.textContent.includes(btn.dataset.week)){
+   const linked=document.querySelector('#summary-app .v20-options button[data-a="'+status+'"]');
+   if(linked)linked.click();
+  }
   draw();
  });
 }

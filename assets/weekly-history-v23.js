@@ -13,7 +13,7 @@ const add=(date,days)=>iso(new Date(dt(date).getTime()+days*86400000));
 const mon=date=>add(date,-(dt(date).getUTCDay()+6)%7);
 const stamp=s=>{const[y,m,d]=s.split('-');return d+'/'+m+'/'+y;};
 const today=()=>new Date(Date.now()+7*3600000).toISOString().slice(0,10);
-const TARGET={weightMin:.30,weightMax:.50,fatMin:.20,fatMax:.40,muscleFloor:0};
+const TARGET={weightMin:.30,weightMax:.50,muscleFloor:0,firstWeekCardioMinutes:10,cardioDays:4};
 function weeks(input){
  const unique=new Map();
  (input||[]).filter(x=>x?.isoDate).forEach(row=>{
@@ -82,7 +82,9 @@ function assess(all,index){
    const rate=(w.weight-anchor.weight)/gap;
    reason+=' · แนวโน้มย้อนไป '+gap+' สัปดาห์ '+signed(rate)+' kg/สัปดาห์ (ใช้ประกอบ ไม่ใช่ผลรายสัปดาห์ล่าสุด)';
   }
-  action='คงแผนอาหารและการฝึกไว้ก่อน ตรวจการทำตามแผน แรงยก และความเปลี่ยนแปลงของน้ำ; รีวิวยืนยันสัปดาห์ถัดไป';
+  action=d&&d.weight>-.30
+    ?'ยังไม่เพิ่ม Cardio อัตโนมัติ เพราะวันชั่งของสัปดาห์ที่นำมาเทียบยังไม่ครบเกณฑ์ · ตรวจว่าทำตามแผนหรือไม่ และชั่งอย่างน้อย 4 วันเพื่อยืนยัน; หากผลยังช้าหรือขึ้นต่อและทำตามครบ ให้ปรับ Zone 2 เพิ่ม 5–10 นาที/ครั้ง'
+    :'สัปดาห์นี้ให้ติดตามตามแผนเดิมก่อน โดยมีเหตุผลเรื่องจำนวนวันชั่งหรือการตั้งค่าเครื่อง ไม่ได้ถือว่าเข้าเป้า';
  }else{
   const loss=-d.weight;
   targetStatus=loss>=TARGET.weightMin&&loss<=TARGET.weightMax?'เข้าเป้าน้ำหนัก':loss<TARGET.weightMin?'น้ำหนักลดช้ากว่าเป้า':'น้ำหนักลดเร็วกว่าเป้า';
@@ -97,15 +99,18 @@ function assess(all,index){
    label='ลดค่อนข้างเร็ว';tone='watch';reason='น้ำหนักเฉลี่ยลดเร็วกว่ากรอบ แม้ค่า BIA ดูดี ก็ไม่ควรเร่ง Cut';action='คงหรือผ่อน Cardio ตามการฟื้นตัว ตรวจความหิวและแรงยก ไม่ลดแคลอรีเพิ่ม';
   }else if(a.status==='no'){
    label='กลับมาทำแผนให้ครบ';tone='watch';reason='ผลน้ำหนักช้ากว่าเป้า และมีบันทึกว่าทำตามแผนไม่ครบ';action='ทำตามส่วนที่ขาดก่อน'+(a.missed.length?': '+a.missed.map(x=>missedNames[x]||x).join(', '):'')+' · ไม่เพิ่ม Cardio หรือหักแคลอรีซ้ำ';
-  }else if(stall&&a.status==='yes'&&adherence(p).status==='yes'){
-   label='ปรับ Cardio เล็กน้อย';tone='adjust';reason='น้ำหนักเฉลี่ยลดช้ากว่าเป้าต่อเนื่อง 2 ช่วงที่เทียบได้ และบันทึกว่าทำตามแผนครบทั้ง 2 สัปดาห์';
-   action='สัปดาห์ถัดไปเพิ่ม Zone 2 อีก 10 นาที/วัน ใน 4 วันที่ทำ Cardio (รวม +40 นาที/สัปดาห์) คงอาหารและเวทเดิม แล้วติดตาม 2 สัปดาห์';
-  }else if(stall){
-   label='ช้าต่อเนื่อง · ตรวจแผน';tone='watch';reason='น้ำหนักเฉลี่ยลดช้ากว่าเป้า 2 ช่วงต่อเนื่อง แต่ยังไม่ยืนยันการทำตามแผนครบทั้ง 2 สัปดาห์';
-   action='บันทึกอาหารจริง การเดิน และ Cardio ให้ครบ; หากทำตามครบทั้ง 2 สัปดาห์และฟื้นตัวดี จึงพิจารณาเพิ่ม Zone 2 วันละ 10 นาที ใน 4 วัน/สัปดาห์';
+  }else if(a.status==='yes'){
+   const minutes=loss<.20?10:5;
+   label=stall?'ปรับ Cardio · ช้าต่อเนื่อง':'ปรับ Cardio เล็กน้อย';
+   tone='adjust';
+   reason='สัปดาห์นี้น้ำหนักลดช้ากว่าเป้า ('+signed(d.weight)+' kg) และบันทึกว่าทำตามแผนครบแล้ว'+(stall?' · ช้าต่อเนื่องจากสัปดาห์ก่อนด้วย':' · เริ่มปรับเล็กน้อยได้โดยไม่ต้องรออีกสัปดาห์');
+   action='ถ้าแรงยกและการฟื้นตัวปกติ ให้เพิ่ม Zone 2 '+minutes+' นาที/ครั้ง × 4 วัน (+'+(minutes*4)+' นาที/สัปดาห์) คงอาหารและเวทเดิม ห้ามลดแคลอรีพร้อมกัน และประเมินผลอีก 1–2 สัปดาห์';
   }else{
-   label='ช้ากว่าเป้า · เฝ้าดู';tone='watch';reason='สัปดาห์นี้น้ำหนักเฉลี่ยลดต่ำกว่า 0.30 kg; 1 สัปดาห์ยังไม่พอพิสูจน์ว่าแผนใช้ไม่ได้';
-   action='คงอาหารและ Cardio ก่อน ตรวจการทำตามแผนและติดตามอีกสัปดาห์ หากช้าต่อเนื่องค่อยปรับทีละอย่าง';
+   const minutes=loss<.20?10:5;
+   label=stall?'ไม่เข้าเป้าต่อเนื่อง · รอตรวจการทำตามแผน':'ไม่เข้าเป้า · เลือกการปรับ';
+   tone='watch';
+   reason='น้ำหนักเฉลี่ยลดช้ากว่าเป้า '+signed(d.weight)+' kg'+(stall?' ต่อเนื่อง 2 ช่วง':' ในสัปดาห์นี้')+' แต่ยังไม่บันทึกว่าทำตามแผนครบหรือไม่';
+   action='ถ้าทำตามแผนครบและฟื้นตัวดี → เพิ่ม Zone 2 '+minutes+' นาที/ครั้ง × 4 วัน (+'+(minutes*4)+' นาที/สัปดาห์) ในสัปดาห์หน้า; ถ้าทำไม่ครบ → แก้ส่วนที่ขาดก่อน ไม่เพิ่ม Cardio ซ้ำ';
   }
   if(d.fat!==null&&Math.abs(d.fat)>.01)reason+=' · ไขมัน BIA '+signed(d.fat)+' kg';
  }
@@ -124,10 +129,15 @@ function stepHtml(x){
 function detailsHtml(x,isLatest){
  const w=x.w;
  const a=x.adherence.status==='yes'?'ทำตามแผนครบ':x.adherence.status==='no'?'บันทึกว่าทำไม่ครบ':'ยังไม่มีบันทึกการทำตามแผน';
- return '<details class="r24-week '+(isLatest?'r24-latest':'')+'" '+(isLatest?'open':'')+'><summary><span><b>'+stamp(w.start)+' – '+stamp(w.end)+'</b><small>'+w.count+'/7 วันชั่ง · '+esc(a)+'</small></span><strong class="r24-status '+x.tone+'">'+esc(x.label)+'</strong></summary>'+
+ const selection='<div class="r24-check"><span>สัปดาห์นี้คุณทำตามแผนครบไหม?</span><div class="r24-buttons">'+
+  '<button type="button" data-week="'+esc(w.start)+'" data-confirm="yes" aria-pressed="'+(x.adherence.status==='yes')+'">ทำครบ</button>'+
+  '<button type="button" data-week="'+esc(w.start)+'" data-confirm="no" aria-pressed="'+(x.adherence.status==='no')+'">ทำไม่ครบ</button>'+
+  '</div><small>คำตอบจะเปลี่ยนคำแนะนำทันทีและบันทึกเฉพาะในเบราว์เซอร์นี้</small></div>';
+ return '<details class="r24-week '+(isLatest?'r24-latest':'')+'" data-week-key="'+esc(w.start)+'" '+(isLatest?'open':'')+'><summary><span><b>'+stamp(w.start)+' – '+stamp(w.end)+'</b><small>'+w.count+'/7 วันชั่ง · '+esc(a)+'</small></span><strong class="r24-status '+x.tone+'">'+esc(x.label)+'</strong></summary>'+
  '<div class="r24-body">'+stepHtml(x)+
  '<p class="r24-evidence"><b>ประเมิน:</b> '+esc(x.targetStatus?x.targetStatus+' · '+x.muscleStatus+' · '+x.reason:x.reason)+'</p>'+
- '<div class="r24-next"><small>แผนสัปดาห์ถัดไป</small><b>'+esc(x.action)+'</b></div>'+
+ '<div class="r24-next '+(x.tone==='adjust'?'r24-change':'')+'"><small>แผนสัปดาห์ถัดไป</small><b>'+esc(x.action)+'</b></div>'+
+ (w.closed?selection:'')+
  '</div></details>';
 }
 function draw(){
@@ -142,10 +152,12 @@ function draw(){
  if(!board){board=document.createElement('section');board.className='r24-response';host.prepend(board);}
  const existing=board.querySelector('details.r24-past');
  const wasOpen=!!existing?.open;
+ const openedWeeks=new Set([...board.querySelectorAll('details.r24-week[open]')].map(x=>x.dataset.weekKey));
  board.innerHTML='<div class="r24-heading"><div><small>WEEKLY RESPONSE · เป้าหมาย vs ผลจริง</small><h3>ร่างกายตอบสนองต่อแผน Cut อย่างไร?</h3><p>ประเมินจากค่าเฉลี่ยรายสัปดาห์ ไม่ใช่ผลชั่งวันเดียว</p></div></div>'+
  (last?detailsHtml(assess(data,last.i),true):'<p>ยังไม่มีสัปดาห์ที่ปิดรอบ</p>')+
  (items.length>1?'<details class="r24-past" '+(wasOpen?'open':'')+'><summary>รีวิวย้อนหลัง '+(items.length-1)+' สัปดาห์ <small>เลือกเปิดดูคำแนะนำแต่ละสัปดาห์</small></summary><div class="r24-history">'+items.slice(1).map(x=>detailsHtml(assess(data,x.i),false)).join('')+'</div></details>':'')+
- '<p class="r24-foot">เกณฑ์น้ำหนักเฉลี่ย −0.30 ถึง −0.50 kg/สัปดาห์ เป็นเป้าเบื้องต้น; BIA เป็นค่าประมาณที่ไวต่อระดับน้ำและการตั้งค่าส่วนสูง · ข้อมูลการกิน Cardio และแรงยกยังไม่ได้เชื่อมอัตโนมัติ จึงใช้การบันทึกทำตามแผนร่วมด้วย · รีวิวประวัติเป็นการประเมินย้อนหลังด้วยกฎปัจจุบัน ไม่ได้แปลว่าเคยทำตามคำแนะนำนั้นจริง</p>';
+ '<p class="r24-foot">เป้าน้ำหนักเฉลี่ย −0.30 ถึง −0.50 kg/สัปดาห์; BIA เป็นเพียงค่าแนวโน้มและไม่บังคับให้กล้ามเพิ่มทุกสัปดาห์ · การเพิ่ม Cardio เป็นคำแนะนำที่มีเงื่อนไขว่าทำตามแผนครบและฟื้นตัวดี หากเพิ่งป่วยหรือแรงตกควรเน้นการฟื้นตัว · ประวัติย้อนหลังเป็นการประเมินด้วยกฎปัจจุบัน ไม่ใช่หลักฐานว่าเคยทำตามคำแนะนำ</p>';
+ board.querySelectorAll('details.r24-week').forEach(x=>{if(openedWeeks.has(x.dataset.weekKey))x.open=true});
  // Keep the existing numeric table for people who want raw averages.
  let history=host.querySelector('.r23-weekly-history');
  if(!history){history=document.createElement('details');history.className='r23-weekly-history';host.appendChild(history);}
@@ -183,6 +195,14 @@ function boot(){
  '#summary-app .r24-next{background:#edf7f0;border-radius:11px;padding:12px 14px;line-height:1.65}',
  '#summary-app .r24-next small{display:block;font-size:10px;color:#547f6a}',
  '#summary-app .r24-next b{font-size:13px;color:#214e39}',
+ '#summary-app .r24-change{background:#eaf3fb}',
+ '#summary-app .r24-change b{color:#235e87}',
+ '#summary-app .r24-check{margin-top:13px;padding:12px;border:1px solid #e2ece5;border-radius:11px;background:#fff}',
+ '#summary-app .r24-check>span{font-size:12px;font-weight:600;display:block}',
+ '#summary-app .r24-buttons{display:flex;gap:8px;margin:8px 0}',
+ '#summary-app .r24-buttons button{border:1px solid #bdd9c9;background:#fff;color:#336a50;padding:8px 14px;border-radius:9px;cursor:pointer;font:500 12px Kanit,system-ui,sans-serif}',
+ '#summary-app .r24-buttons button[aria-pressed="true"]{background:#dff2e8;border:2px solid #23875a;color:#145e40}',
+ '#summary-app .r24-check>small{display:block;color:#798a81;font-size:10px}',
  '#summary-app .r24-past{border-top:1px solid #e8eee9;padding-top:12px;margin-top:15px}',
  '#summary-app .r24-past>summary{font-weight:600;font-size:13px;cursor:pointer}',
  '#summary-app .r24-past>summary small{font-weight:400;color:#7e8e85;font-size:11px}',
@@ -204,6 +224,15 @@ function boot(){
  document.addEventListener('click',e=>{if(e.target.closest?.('#summary-app .s-range-controls button'))setTimeout(draw,250)});
  document.addEventListener('click',e=>{if(e.target.closest?.('#summary-app .v20-options button'))setTimeout(draw,120)});
  document.addEventListener('change',e=>{if(e.target.closest?.('#summary-app .v20-missed input'))setTimeout(draw,120)});
+ document.addEventListener('click',e=>{
+  const btn=e.target.closest?.('#summary-app .r24-buttons button[data-week][data-confirm]');
+  if(!btn)return;
+  const key='jacky-trainer-adherence-v2:'+btn.dataset.week;
+  const status=btn.dataset.confirm;
+  if(!['yes','no'].includes(status))return;
+  try{localStorage.setItem(key,JSON.stringify({status,missed:[]}))}catch(err){console.warn('Cannot save weekly adherence',err)}
+  draw();
+ });
 }
 window.JackyWeeklyResponse={weeks,assess,TARGET};
 document.readyState==='loading'?document.addEventListener('DOMContentLoaded',boot,{once:true}):boot();

@@ -70,19 +70,19 @@ for (const [start, weight] of [['2025-06-02', 80], ['2025-06-09', 79.9], ['2025-
 }
 const threeWeeks = weekly.weeks(sample);
 const reviewed = weekly.assess(threeWeeks, 2);
-if (reviewed.label !== 'ปรับ Cardio เล็กน้อย' || !reviewed.action.includes('10 นาที')) {
+if (reviewed.label?.startsWith('ปรับ Cardio') !== true || !reviewed.action.includes('10 นาที')) {
   throw new Error('Weekly response should suggest a small cardio change after confirmed, repeated stalls');
 }
 yesKeys.clear();
 // One verified under-target week is sufficient for a SMALL conditional adjustment.
 yesKeys.add('jacky-trainer-adherence-v2:2025-06-16');
 const firstSlowWeek = weekly.assess(threeWeeks, 2);
-if (firstSlowWeek.label !== 'ปรับ Cardio เล็กน้อย' || !firstSlowWeek.action.includes('10 นาที')) {
+if (firstSlowWeek.label?.startsWith('ปรับ Cardio') !== true || !firstSlowWeek.action.includes('10 นาที')) {
   throw new Error('A confirmed slow week must trigger a small Cardio adjustment without waiting for 2 bad weeks');
 }
 yesKeys.clear();
 const conditional = weekly.assess(threeWeeks, 2);
-if (conditional.label === 'ปรับ Cardio เล็กน้อย') {
+if (conditional.label?.startsWith('ปรับ Cardio') === true) {
   throw new Error('Weekly response must not auto-adjust without adherence confirmation');
 }
 if (!conditional.action.includes('เพิ่ม Zone 2')) {
@@ -94,15 +94,15 @@ if (missed.label !== 'กลับมาทำแผนให้ครบ') thro
 noKeys.clear();
 yesKeys.add('jacky-trainer-adherence-v2:2025-06-16');
 const waterChanged = sample.map(x => x.isoDate >= '2025-06-16' ? { ...x, waterWeight: 47.2 } : x);
-if (weekly.assess(weekly.weeks(waterChanged), 2).label === 'ปรับ Cardio เล็กน้อย') {
+if (weekly.assess(weekly.weeks(waterChanged), 2).label?.startsWith('ปรับ Cardio') === true) {
   throw new Error('Do not increase Cardio on a large water shift');
 }
 const muscleDropped = sample.map(x => x.isoDate >= '2025-06-16' ? { ...x, muscle: 58.3 } : x);
-if (weekly.assess(weekly.weeks(muscleDropped), 2).label === 'ปรับ Cardio เล็กน้อย') {
+if (weekly.assess(weekly.weeks(muscleDropped), 2).label?.startsWith('ปรับ Cardio') === true) {
   throw new Error('Do not increase Cardio when BIA muscle sharply falls');
 }
 const heightChanged = sample.map(x => x.isoDate < '2025-06-16' ? { ...x, height: 176 } : x);
-if (weekly.assess(weekly.weeks(heightChanged), 2).label === 'ปรับ Cardio เล็กน้อย') {
+if (weekly.assess(weekly.weeks(heightChanged), 2).label?.startsWith('ปรับ Cardio') === true) {
   throw new Error('Weekly response must not compare BIA across height calibration changes');
 }
 

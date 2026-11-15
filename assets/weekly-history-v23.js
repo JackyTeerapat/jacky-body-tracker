@@ -14,6 +14,8 @@ const mon=date=>add(date,-(dt(date).getUTCDay()+6)%7);
 const stamp=s=>{const[y,m,d]=s.split('-');return d+'/'+m+'/'+y;};
 const today=()=>new Date(Date.now()+7*3600000).toISOString().slice(0,10);
 const TARGET={weightMin:.30,weightMax:.50,muscleFloor:0,firstWeekCardioMinutes:10,cardioDays:4};
+// Three measured days are sufficient to close a Monday–Sunday week; never invent missing days.
+const MIN_CLOSED_WEEK_DAYS=3;
 function weeks(input){
  const unique=new Map();
  (input||[]).filter(x=>x?.isoDate).forEach(row=>{
@@ -34,7 +36,7 @@ function weeks(input){
    heightMixed:heights.length!==1,weight:a('weight'),fat:a('fat'),bf:a('bf'),muscle:a('muscle'),water:a('waterWeight')};
  });
 }
-const good=w=>!!w&&w.closed&&w.count>=4&&Number.isFinite(w.weight)&&!w.heightMixed;
+const good=w=>!!w&&w.closed&&w.count>=MIN_CLOSED_WEEK_DAYS&&Number.isFinite(w.weight)&&!w.heightMixed;
 const comparable=(a,b)=>good(a)&&good(b)&&a.height===b.height;
 function adherence(w){
  if(!w)return {status:null,missed:[]};
@@ -52,8 +54,8 @@ function assess(all,index){
  const sameHeight=!!p&&w.height!==null&&p.height===w.height;
  const dw=p&&Number.isFinite(p.weight)&&Number.isFinite(w.weight)?w.weight-p.weight:null;
  const d=dw===null?null:{weight:dw,fat:sameHeight?w.fat-p.fat:null,muscle:sameHeight?w.muscle-p.muscle:null,water:sameHeight?w.water-p.water:null};
- const enough=!!(p&&w.count>=4&&p.count>=2);
- const valid=!!(enough&&p.count>=4);
+ const enough=!!(p&&w.count>=MIN_CLOSED_WEEK_DAYS&&p.count>=2);
+ const valid=!!(enough&&p.count>=MIN_CLOSED_WEEK_DAYS);
  const provisional=!!(enough&&!valid);
  const waterShift=d&&Number.isFinite(d.water)&&Math.abs(d.water)>=.5;
  const muscleDrop=d&&Number.isFinite(d.muscle)&&d.muscle<-.3;
@@ -66,10 +68,10 @@ function assess(all,index){
   label='สัปดาห์ฐาน';
   reason='ยังไม่มีค่าเฉลี่ยสัปดาห์ก่อนหน้า';
   action='ชั่งอย่างสม่ำเสมอเพื่อเริ่มเปรียบเทียบ';
- }else if(w.count<4){
+ }else if(w.count<MIN_CLOSED_WEEK_DAYS){
   label='รอผลค่าเฉลี่ย';
   reason='สัปดาห์นี้ชั่งเพียง '+w.count+' วัน';
-  action='ยังไม่ปรับจากข้อมูลชุดนี้; ชั่งอย่างน้อย 4 วันในสัปดาห์ถัดไป';
+  action='ยังไม่ปรับจากข้อมูลชุดนี้; ใช้ค่าเฉลี่ยอย่างน้อย 3 วันในสัปดาห์ถัดไป';
  }else if(p.count<2){
   label='ผลเทียบยังไม่นิ่ง';
   reason='สัปดาห์ก่อนมีเพียง '+p.count+' วันชั่ง';

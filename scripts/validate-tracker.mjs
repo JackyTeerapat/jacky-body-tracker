@@ -67,6 +67,25 @@ const third=makeWeek('2025-06-16',79.8);
 const data=weekly.weeks([...first,...second,...third]);
 const slow=weekly.assess(data,2);
 if(slow.label!=='ลดช้ากว่าเป้า'||!slow.action.includes('10 นาที/ครั้ง'))throw new Error('Slow response must explicitly suggest 10 extra cardio minutes');
+// A completed week with exactly three real weigh-ins must be a final review, not "waiting for 4 days".
+const threeScanWeek=weekly.assess(weekly.weeks([...first,...second,...third.slice(0,3)]),2);
+if(threeScanWeek.label!=='ลดช้ากว่าเป้า'||!threeScanWeek.valid)
+ throw new Error('Three measured days must close a completed week with a valid weekly assessment');
+const twoScanWeek=weekly.assess(weekly.weeks([...first,...second,...third.slice(0,2)]),2);
+if(twoScanWeek.label!=='รอผลค่าเฉลี่ย')
+ throw new Error('Two measured days still need a cautious assessment');
+const sundayCloseSample=weekly.weeks([
+ ...makeWeek('2026-11-02',79.4,4),
+ ...['2026-11-13','2026-11-14','2026-11-15'].map((isoDate,i)=>({
+  isoDate,measuredAt:isoDate+'T12:00:00',height:178,weight:[79.4,79.7,80.2][i],
+  fat:[16.1,16.2,16.0][i],muscle:[58.9,59.2,59.9][i],bf:20,waterWeight:[46.3,46.5,47.1][i]
+ }))
+]);
+if(!sundayCloseSample.at(-1).closed||sundayCloseSample.at(-1).count!==3)
+ throw new Error('Sunday scan must close November 9-15 with exactly three scans');
+const confirmedWeek=weekly.assess(sundayCloseSample,sundayCloseSample.length-1);
+if(confirmedWeek.label==='รอผลค่าเฉลี่ย'||confirmedWeek.label==='สัปดาห์ยังไม่สิ้นสุด')
+ throw new Error('November 9-15 must display a completed weekly review');
 const sparse=weekly.assess(weekly.weeks([...first,...second.slice(0,3),...third]),2);
 if(sparse.label!=='ลดช้ากว่าเป้า'||!sparse.provisional)throw new Error('Sparse previous week should allow a provisional, actionable review');
 const missing=weekly.assess(weekly.weeks([...first,...second.slice(0,1),...third]),2);

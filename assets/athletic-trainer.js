@@ -10,14 +10,19 @@
   const rows=(data||[]).filter(x=>x?.isoDate&&Number.isFinite(Number(x.weight))).slice().sort((a,b)=>a.isoDate.localeCompare(b.isoDate));
   if(!rows.length)return {weeks:[],current:[]};
   const thisMon=mon(rows.at(-1).isoDate),weeks=[];
-  for(let d=mon(rows[0].isoDate);d<thisMon;d=shift(d,7)){
+  const thisEnd=iso(shift(thisMon,6)),lastScan=rows.at(-1).isoDate;
+  const bangkokToday=new Date(Date.now()+7*3600000).toISOString().slice(0,10);
+  // A recorded Sunday scan closes its own week; after Sunday the week is closed normally.
+  const thisWeekClosed=thisEnd<bangkokToday||(thisEnd===bangkokToday&&lastScan===thisEnd);
+  const endExclusive=thisWeekClosed?shift(thisMon,7):thisMon;
+  for(let d=mon(rows[0].isoDate);d<endExclusive;d=shift(d,7)){
    const start=iso(d),end=iso(shift(d,6)),r=rows.filter(x=>x.isoDate>=start&&x.isoDate<=end);
-   if(r.length<4)continue;
+   if(r.length<3)continue;
    const heights=[...new Set(r.map(x=>Number(x.height)))];
    const a=k=>mean(r.map(x=>Number(x[k])).filter(Number.isFinite));
    weeks.push({start,end,days:r.length,weight:a('weight'),fat:a('fat'),muscle:a('muscle'),water:a('waterWeight'),height:heights.length===1?heights[0]:null});
   }
-  return {weeks,current:rows.filter(x=>x.isoDate>=iso(thisMon))};
+  return {weeks,current:rows.filter(x=>x.isoDate>=iso(endExclusive))};
  }
  function slope(weeks){
   if(weeks.length<2)return null;

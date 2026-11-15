@@ -87,7 +87,7 @@ const confirmedWeek=weekly.assess(sundayCloseSample,sundayCloseSample.length-1);
 if(confirmedWeek.label==='รอผลค่าเฉลี่ย'||confirmedWeek.label==='สัปดาห์ยังไม่สิ้นสุด')
  throw new Error('November 9-15 must display a completed weekly review');
 const sparse=weekly.assess(weekly.weeks([...first,...second.slice(0,3),...third]),2);
-if(sparse.label!=='ลดช้ากว่าเป้า'||!sparse.provisional)throw new Error('Sparse previous week should allow a provisional, actionable review');
+if(sparse.label!=='ลดช้ากว่าเป้า'||!sparse.valid)throw new Error('Three previous readings should allow a complete weekly comparison');
 const missing=weekly.assess(weekly.weeks([...first,...second.slice(0,1),...third]),2);
 if(missing.label==='ลดช้ากว่าเป้า')throw new Error('One prior scan is not sufficient to increase cardio');
 const hydrated=weekly.assess(weekly.weeks([...first,...second,...makeWeek('2025-06-16',79.8,4,{waterWeight:47.2})]),2);
